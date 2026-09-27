@@ -1,0 +1,10 @@
+{
+  "completed": 14,
+  "expected": 15,
+  "failures": [
+    {
+      "challenge_id": "XQWEN-03",
+      "error": "ValueError: grader_tests must contain at least 5 items"
+    }
+  ]
+}

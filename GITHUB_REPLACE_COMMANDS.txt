@@ -1,0 +1,19 @@
+# Replace the current GitHub repository contents
+
+# IMPORTANT: run these inside the existing local Git repository.
+
+git status
+
+# Remove current tracked files and untracked project files.
+git rm -r .
+git clean -fd
+
+# Now extract the final ZIP into the repository root.
+
+git add -A
+git status
+git commit -m "Replace repository with consolidated benchmark and cross-evaluation report"
+git push origin master
+
+# Final check:
+git status

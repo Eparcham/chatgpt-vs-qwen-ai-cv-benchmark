@@ -1,0 +1,444 @@
+{
+  "benchmark_name": "Cross-Evaluation Set B — Qwen-authored",
+  "author": "Qwen",
+  "intended_answering_model": "ChatGPT",
+  "task_count": 15,
+  "challenges": [
+    {
+      "id": "XQWEN-01",
+      "title": "Adaptive Thresholding via Integral Image",
+      "difficulty": "medium",
+      "category": "numpy_numeric",
+      "problem": "Implement adaptive thresholding for a grayscale image using an integral image (summed-area table) to efficiently compute local means. Given a 2D numpy array `image` of shape (H, W) representing pixel intensities, a block size `block_size` (odd integer), and a constant `C`, compute a binary mask where a pixel is 1 if its intensity is greater than the mean of its local neighborhood minus `C`, and 0 otherwise.\n\nThe local neighborhood for a pixel at (y, x) is a square window of size `block_size` x `block_size` centered at (y, x). If the window extends beyond the image boundaries, it should be clipped to the image boundaries. The mean should be calculated over the actual number of pixels in the clipped window.\n\nUse the integral image technique to achieve O(H*W) complexity instead of O(H*W*block_size^2).",
+      "requirements": [
+        "Input `image` is a 2D numpy array of floats or ints.",
+        "Input `block_size` is an odd positive integer.",
+        "Input `C` is a float constant.",
+        "Output is a 2D numpy array of integers (0 or 1) with the same shape as `image`.",
+        "Must use an integral image (summed-area table) for efficient local mean calculation.",
+        "Handle boundary conditions by clipping the window to the image edges.",
+        "The comparison is: `pixel_value > (local_mean - C)`."
+      ],
+      "function_signature": "def adaptive_threshold_integral(image: np.ndarray, block_size: int, C: float) -> np.ndarray:",
+      "public_examples": [
+        {
+          "input": "image = np.array([[10, 10, 10], [10, 20, 10], [10, 10, 10]], dtype=float)\nblock_size = 3\nC = 0.0",
+          "output": "np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])"
+        },
+        {
+          "input": "image = np.ones((5, 5), dtype=float) * 100\nblock_size = 3\nC = 10.0",
+          "output": "np.ones((5, 5), dtype=int)"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-02",
+      "title": "Polygon Area and Centroid via Shoelace",
+      "difficulty": "medium",
+      "category": "image_geometry",
+      "problem": "Given a list of 2D vertices defining a simple polygon (non-self-intersecting), compute its signed area and centroid. The vertices are provided in order (either clockwise or counter-clockwise). The signed area should be positive if the vertices are ordered counter-clockwise and negative if clockwise. The centroid coordinates must be calculated using the standard polygon centroid formula derived from the shoelace algorithm. If the polygon is degenerate (area is zero), return (0.0, 0.0) for the centroid.",
+      "requirements": [
+        "Implement a function `polygon_properties(vertices)` that accepts a list of tuples or a NumPy array of shape (N, 2).",
+        "Calculate the signed area using the Shoelace formula.",
+        "Calculate the centroid (Cx, Cy) using the formula: Cx = (1/6A) * sum((xi + xi+1) * (xi*yi+1 - xi+1*yi)) and similarly for Cy.",
+        "Handle the case where the area is zero by returning 0.0 for both centroid coordinates.",
+        "The function must return a tuple: (signed_area, centroid_x, centroid_y).",
+        "Ensure numerical stability for large coordinate values by using float64 precision."
+      ],
+      "function_signature": "def polygon_properties(vertices):",
+      "public_examples": [
+        {
+          "input": "[(0, 0), (4, 0), (4, 4), (0, 4)]",
+          "output": "(16.0, 2.0, 2.0)"
+        },
+        {
+          "input": "[(0, 0), (0, 4), (4, 4), (4, 0)]",
+          "output": "(-16.0, 2.0, 2.0)"
+        },
+        {
+          "input": "[(0, 0), (2, 0), (1, 2)]",
+          "output": "(2.0, 1.0, 0.6666666666666666)"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-03",
+      "title": "Robust Grid Alignment via Hough Transform",
+      "difficulty": "medium",
+      "category": "image_representation",
+      "problem": "You are given a binary image containing a distorted grid pattern. The grid lines are noisy and slightly rotated. Your task is to estimate the global rotation angle of the grid relative to the horizontal axis using the Hough Transform for line detection. You must identify the dominant orientation of the lines and return the angle in degrees, normalized to the range [-45, 45].",
+      "requirements": [
+        "Use OpenCV's HoughLinesP or HoughLines to detect line segments.",
+        "Filter out short lines (length < 20 pixels) to reduce noise.",
+        "Calculate the angle of each detected line segment relative to the horizontal axis.",
+        "Compute the median angle of all valid line segments to ensure robustness against outliers.",
+        "Normalize the final angle to the range [-45, 45] degrees.",
+        "Return the result as a single float value."
+      ],
+      "function_signature": "def estimate_grid_rotation(image: np.ndarray) -> float:\n    \"\"\"\n    Estimate the rotation angle of a grid pattern in a binary image.\n\n    Args:\n        image: A 2D numpy array (uint8) representing a binary image (0 or 255).\n\n    Returns:\n        The estimated rotation angle in degrees, normalized to [-45, 45].\n    \"\"\"\n    pass",
+      "public_examples": [
+        {
+          "input": "A 200x200 binary image with a perfect horizontal grid (no rotation).",
+          "output": 0.0
+        },
+        {
+          "input": "A 200x200 binary image with a grid rotated by 15 degrees counter-clockwise.",
+          "output": 15.0
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-04",
+      "title": "Keypoint Heatmap Peak Extraction with Sub-pixel Refinement",
+      "difficulty": "hard",
+      "category": "heatmaps_keypoints",
+      "problem": "Given a batch of keypoint heatmaps and a set of ground-truth keypoint coordinates, extract the predicted keypoint locations using a specific algorithm. For each ground-truth keypoint, find the local maximum in the heatmap within a 3x3 neighborhood centered at the ground-truth location. If the maximum value is below a threshold, the prediction is considered invalid (return NaN). Otherwise, refine the location using a quadratic fit on the 3x3 neighborhood values to achieve sub-pixel accuracy. The quadratic fit assumes the heatmap values $V$ around the peak $(x_0, y_0)$ can be modeled as $V(x, y) = A(x-x_0)^2 + B(y-y_0)^2 + C$. Solve for the offsets $dx$ and $dy$ from the center of the 3x3 window using the standard formula derived from the second derivatives: $dx = 0.5 * (V_{left} - V_{right}) / (V_{left} - 2*V_{center} + V_{right})$ and similarly for $dy$. If the denominator is zero or the offset exceeds 0.5 pixels, clamp the offset to +/- 0.5. Return the refined coordinates.",
+      "requirements": [
+        "Input `heatmaps` is a NumPy array of shape (N, H, W) or (N, K, H, W) where N is batch size, K is number of keypoints/channels, H/W are spatial dimensions.",
+        "Input `gt_keypoints` is a NumPy array of shape (N, K, 2) containing integer pixel coordinates (x, y) for each keypoint.",
+        "If `heatmaps` is 3D (N, H, W), assume K=1 and reshape internally to (N, 1, H, W).",
+        "For each keypoint k in batch n, extract the 3x3 patch from `heatmaps[n, k]` centered at `gt_keypoints[n, k]`.",
+        "Handle boundary conditions: if the 3x3 patch goes out of bounds, pad with zeros.",
+        "Find the index of the maximum value in the 3x3 patch. Let this be $(r, c)$ relative to the top-left of the patch.",
+        "The center of the patch is at $(1, 1)$. The predicted integer location is $(x_{gt} + c - 1, y_{gt} + r - 1)$.",
+        "Check if the maximum value is less than `threshold`. If so, return NaN for this keypoint.",
+        "Compute sub-pixel refinement using the quadratic formula on the 3x3 patch values.",
+        "Let $V_{center}$ be the value at the peak location found in step 4. Let $V_{left}, V_{right}$ be neighbors in x, and $V_{top}, V_{bottom}$ be neighbors in y relative to the peak.",
+        "Calculate $dx = 0.5 * (V_{left} - V_{right}) / (V_{left} - 2*V_{center} + V_{right})$.",
+        "Calculate $dy = 0.5 * (V_{top} - V_{bottom}) / (V_{top} - 2*V_{center} + V_{bottom})$.",
+        "If the denominator is close to zero (abs < 1e-6), set offset to 0.",
+        "Clamp $dx$ and $dy$ to the range [-0.5, 0.5].",
+        "Final coordinate is $(x_{pred} + dx, y_{pred} + dy)$.",
+        "Return an array of shape (N, K, 2) with float64 dtype."
+      ],
+      "function_signature": "def extract_keypoints(heatmaps: np.ndarray, gt_keypoints: np.ndarray, threshold: float = 0.1) -> np.ndarray:",
+      "public_examples": [
+        {
+          "input": "heatmaps = np.array([[[0, 0, 0], [0, 1, 0], [0, 0, 0]]], dtype=np.float32)\ngt_keypoints = np.array([[[1, 1]]])\nthreshold = 0.1",
+          "output": "np.array([[[1.0, 1.0]]])"
+        },
+        {
+          "input": "heatmaps = np.array([[[0, 0, 0], [0, 0.5, 0], [0, 0, 0]]], dtype=np.float32)\ngt_keypoints = np.array([[[1, 1]]])\nthreshold = 0.6",
+          "output": "np.array([[[np.nan, np.nan]]])"
+        },
+        {
+          "input": "heatmaps = np.array([[[0, 0, 0], [0.1, 1.0, 0.2], [0, 0, 0]]], dtype=np.float32)\ngt_keypoints = np.array([[[1, 1]]])\nthreshold = 0.1",
+          "output": "np.array([[[1.0, 1.0]]])"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-05",
+      "title": "Rotated Bounding Box Intersection Area",
+      "difficulty": "medium",
+      "category": "boxes_transforms",
+      "problem": "Implement a function to compute the intersection area between two rotated bounding boxes. Each box is defined by its center coordinates (cx, cy), width (w), height (h), and rotation angle (theta) in radians. The rotation is counter-clockwise around the center. The intersection area is the area of the polygon formed by the overlap of the two rectangles. If the boxes do not intersect, return 0.0. Use the Sutherland-Hodgman algorithm for polygon clipping.",
+      "requirements": [
+        "Input boxes are tuples/lists of (cx, cy, w, h, theta).",
+        "Theta is in radians.",
+        "Return the intersection area as a float.",
+        "Handle cases where one box is completely inside the other.",
+        "Handle cases where boxes do not intersect.",
+        "Use standard Python libraries (math, numpy allowed)."
+      ],
+      "function_signature": "def rotated_box_intersection(box1: tuple, box2: tuple) -> float:",
+      "public_examples": [
+        {
+          "input": "box1 = (0, 0, 2, 2, 0)\nbox2 = (1, 0, 2, 2, 0)",
+          "output": "1.0"
+        },
+        {
+          "input": "box1 = (0, 0, 2, 2, 0)\nbox2 = (0, 0, 2, 2, 0)",
+          "output": "4.0"
+        },
+        {
+          "input": "box1 = (0, 0, 2, 2, 0)\nbox2 = (5, 5, 2, 2, 0)",
+          "output": "0.0"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-06",
+      "title": "Camera Pose from Vanishing Points",
+      "difficulty": "hard",
+      "category": "camera_geometry",
+      "problem": "Given the intrinsic camera matrix $K$ and two orthogonal vanishing points $v_1$ and $v_2$ in homogeneous image coordinates, estimate the camera rotation matrix $R$ (3x3) that aligns the world axes with the camera frame. Assume the world coordinate system is aligned such that the vanishing points correspond to the X and Y axes respectively, and the Z axis is determined by the cross product. The solution must handle the ambiguity of the sign of the rotation vectors by ensuring the resulting rotation matrix has a determinant of +1 and that the camera is looking towards the positive Z direction in the world frame (i.e., the third column of R, which represents the camera's optical axis in world coordinates, should have a positive dot product with the vector from the camera center to the scene, approximated here by ensuring the Z-component of the camera's forward vector in world coordinates is consistent with standard right-handed conventions). Specifically, compute the rotation matrix $R$ such that $K^{-1} v_1$ and $K^{-1} v_2$ are orthogonal in the camera frame, and $R$ maps the world axes to the camera axes.",
+      "requirements": [
+        "Input K is a 3x3 numpy array representing the intrinsic matrix.",
+        "Input v1 and v2 are 3-element numpy arrays representing homogeneous vanishing points.",
+        "Output R is a 3x3 numpy array representing the rotation matrix.",
+        "The columns of R correspond to the camera axes expressed in the world frame (or vice versa, depending on convention, but must be consistent with $v_i \\approx K R e_i$).",
+        "The solution must normalize the rotation vectors derived from $K^{-1}v_i$.",
+        "The third axis is computed via cross product of the first two.",
+        "The determinant of R must be +1.",
+        "Handle cases where v1 and v2 are not perfectly orthogonal due to noise by orthogonalizing them (e.g., Gram-Schmidt) before forming R."
+      ],
+      "function_signature": "def estimate_rotation_from_vps(K: np.ndarray, v1: np.ndarray, v2: np.ndarray) -> np.ndarray:",
+      "public_examples": [
+        {
+          "input": "K = np.eye(3), v1 = np.array([1, 0, 1]), v2 = np.array([0, 1, 1])",
+          "output": "R = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])"
+        },
+        {
+          "input": "K = np.array([[100, 0, 50], [0, 100, 50], [0, 0, 1]]), v1 = np.array([150, 50, 1]), v2 = np.array([50, 150, 1])",
+          "output": "R = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-07",
+      "title": "Depth-Aware Surface Normal Estimation",
+      "difficulty": "hard",
+      "category": "depth_geometry",
+      "problem": "Given a depth map `depth` of shape (H, W) representing distances from the camera plane, and intrinsic camera parameters `fx`, `fy`, `cx`, `cy`, compute the surface normal vectors for each pixel. The surface normal at a pixel is defined as the unit vector perpendicular to the local tangent plane of the 3D surface reconstructed from the depth map. Use central differences to estimate the partial derivatives of the 3D coordinates with respect to image coordinates u and v. Specifically, for a pixel (u, v), the 3D point is P(u,v) = ((u-cx)*depth[v,u]/fx, (v-cy)*depth[v,u]/fy, depth[v,u]). The normal N is proportional to the cross product of the tangent vectors dP/du and dP/dv. Handle boundary pixels by using forward or backward differences where central differences are not possible. If the depth is zero or invalid (NaN), the normal should be [0, 0, 0].",
+      "requirements": [
+        "Input `depth` is a 2D NumPy array of shape (H, W).",
+        "Inputs `fx`, `fy`, `cx`, `cy` are floats.",
+        "Output is a 3D NumPy array of shape (H, W, 3) containing unit normal vectors.",
+        "Use central differences for interior pixels and one-sided differences for boundaries.",
+        "Normalize the resulting normal vectors to unit length.",
+        "Set normals to [0, 0, 0] if the computed magnitude is zero or if depth is invalid.",
+        "The coordinate system assumes Z is forward, X is right, Y is down (standard image coordinates)."
+      ],
+      "function_signature": "def estimate_surface_normals(depth: np.ndarray, fx: float, fy: float, cx: float, cy: float) -> np.ndarray:",
+      "public_examples": [
+        {
+          "input": "depth = np.ones((3, 3)) * 10.0\nfx, fy, cx, cy = 1.0, 1.0, 1.0, 1.0",
+          "output": "array([[[0., 0., 1.],\n        [0., 0., 1.],\n        [0., 0., 1.]],\n\n       [[0., 0., 1.],\n        [0., 0., 1.],\n        [0., 0., 1.]],\n\n       [[0., 0., 1.],\n        [0., 0., 1.],\n        [0., 0., 1.]]])"
+        },
+        {
+          "input": "depth = np.array([[10., 10., 10.], [10., 11., 10.], [10., 10., 10.]])\nfx, fy, cx, cy = 1.0, 1.0, 1.0, 1.0",
+          "output": "array([[[0., 0., 1.],\n        [0., 0., 1.],\n        [0., 0., 1.]],\n\n       [[0., 0., 1.],\n        [0., 0., 1.],\n        [0., 0., 1.]],\n\n       [[0., 0., 1.],\n        [0., 0., 1.],\n        [0., 0., 1.]]])"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-08",
+      "title": "Boundary F1 Score for Segmentation",
+      "difficulty": "medium",
+      "category": "segmentation_metrics",
+      "problem": "Implement the Boundary F1 Score (BFS) metric, commonly used in medical image segmentation to evaluate the accuracy of object boundaries. The metric is defined as the harmonic mean of Boundary Precision and Boundary Recall.\n\nGiven a binary ground truth mask `gt` and a binary prediction mask `pred` (both 2D numpy arrays of same shape), and an integer `tolerance` (distance threshold in pixels):\n\n1. Extract the boundaries of both masks. The boundary of a binary mask is defined as the set of pixels that are part of the mask but have at least one 4-connected neighbor (up, down, left, right) that is NOT part of the mask. Note: Pixels on the image edge are considered to have 'outside' neighbors if they are part of the mask, thus they are boundary pixels.\n2. Compute Boundary Precision: The fraction of predicted boundary pixels that are within `tolerance` distance (Euclidean) of any ground truth boundary pixel.\n3. Compute Boundary Recall: The fraction of ground truth boundary pixels that are within `tolerance` distance (Euclidean) of any predicted boundary pixel.\n4. Compute Boundary F1: $2 * (Precision * Recall) / (Precision + Recall)$. If both Precision and Recall are 0, return 0.0.\n\nUse standard Euclidean distance for the tolerance check. You may use `scipy.spatial.distance.cdist` or manual calculation, but ensure efficiency is reasonable for small to medium images.",
+      "requirements": [
+        "Input masks are 2D numpy arrays with values 0 or 1.",
+        "Boundary definition uses 4-connectivity.",
+        "Distance metric is Euclidean.",
+        "Handle edge cases where one or both masks are empty or have no boundaries.",
+        "Return a float between 0.0 and 1.0."
+      ],
+      "function_signature": "def boundary_f1_score(gt: np.ndarray, pred: np.ndarray, tolerance: int) -> float:",
+      "public_examples": [
+        {
+          "input": "gt = np.array([[0,0,0,0],[0,1,1,0],[0,1,1,0],[0,0,0,0]]); pred = np.array([[0,0,0,0],[0,1,1,0],[0,1,1,0],[0,0,0,0]]); tolerance = 1",
+          "output": "1.0"
+        },
+        {
+          "input": "gt = np.array([[0,0,0,0],[0,1,1,0],[0,1,1,0],[0,0,0,0]]); pred = np.array([[0,0,0,0],[0,0,1,0],[0,1,1,0],[0,0,0,0]]); tolerance = 1",
+          "output": "0.8"
+        },
+        {
+          "input": "gt = np.array([[0,0,0,0],[0,1,1,0],[0,1,1,0],[0,0,0,0]]); pred = np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]); tolerance = 1",
+          "output": "0.0"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-09",
+      "title": "Dice Loss with Class Weights",
+      "difficulty": "medium",
+      "category": "loss_functions",
+      "problem": "Implement a weighted Dice loss function for multi-class semantic segmentation. The input consists of predicted logits and ground truth labels. The loss should be computed per class, weighted by inverse frequency of the class in the ground truth, and averaged over the batch. Handle numerical stability by adding a small epsilon to the denominator.",
+      "requirements": [
+        "Input `preds` is a tensor of shape (B, C, H, W) containing raw logits.",
+        "Input `targets` is a tensor of shape (B, H, W) containing integer class indices in [0, C-1].",
+        "Compute softmax probabilities from `preds`.",
+        "One-hot encode `targets` to shape (B, C, H, W).",
+        "Calculate Dice coefficient for each class c: (2 * intersection + eps) / (sum_pred + sum_target + eps).",
+        "Calculate class weights based on inverse frequency in the batch ground truth: w_c = 1 / (count_c + eps). Normalize weights so they sum to 1.",
+        "Compute weighted Dice loss: 1 - sum(w_c * dice_c).",
+        "Average the loss over the batch dimension.",
+        "Use `eps = 1e-7` for numerical stability.",
+        "Return a scalar tensor."
+      ],
+      "function_signature": "def weighted_dice_loss(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:",
+      "public_examples": [
+        {
+          "input": "preds = torch.zeros(1, 2, 2, 2)\ntargets = torch.tensor([[[0, 0], [1, 1]]])",
+          "output": "tensor(0.5000)"
+        },
+        {
+          "input": "preds = torch.tensor([[[[10., 10.], [10., 10.]], [[-10., -10.], [-10., -10.]]]])\ntargets = torch.tensor([[[0, 0], [0, 0]]])",
+          "output": "tensor(0.0000)"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-10",
+      "title": "Gradient Clipping by Global Norm",
+      "difficulty": "medium",
+      "category": "training_optimization",
+      "problem": "Implement a function that performs gradient clipping by global norm. Given a list of PyTorch tensors representing gradients and a maximum norm threshold, compute the global L2 norm of all gradients concatenated. If this global norm exceeds the threshold, scale all gradients by the ratio `threshold / global_norm`. If the global norm is zero or less than or equal to the threshold, return the gradients unchanged. The function should return the total norm (before clipping) and the list of clipped gradients.",
+      "requirements": [
+        "Use PyTorch for tensor operations.",
+        "Compute the global L2 norm across all provided gradient tensors.",
+        "If the global norm > max_norm, scale each gradient tensor by (max_norm / global_norm).",
+        "If the global norm <= max_norm or is zero, do not scale.",
+        "Return a tuple: (total_norm, clipped_gradients_list).",
+        "Handle empty lists of gradients gracefully (return 0.0 norm and empty list).",
+        "Ensure numerical stability when computing the norm (avoid overflow/underflow if possible, though standard L2 is acceptable for medium difficulty)."
+      ],
+      "function_signature": "def clip_grads_by_global_norm(grads: list, max_norm: float) -> tuple:",
+      "public_examples": [
+        {
+          "input": "grads = [torch.tensor([3.0, 4.0]), torch.tensor([0.0])], max_norm = 10.0",
+          "output": "(5.0, [tensor([3., 4.]), tensor([0.])])"
+        },
+        {
+          "input": "grads = [torch.tensor([3.0, 4.0]), torch.tensor([0.0])], max_norm = 2.5",
+          "output": "(5.0, [tensor([1.5, 2.0]), tensor([0.0])])"
+        },
+        {
+          "input": "grads = [], max_norm = 5.0",
+          "output": "(0.0, [])"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-11",
+      "title": "Rotary Position Embedding (RoPE) Implementation",
+      "difficulty": "hard",
+      "category": "transformer_utilities",
+      "problem": "Implement the Rotary Position Embedding (RoPE) mechanism as described in the paper 'RoFormer: Enhanced Transformer with Rotary Position Embedding'.\n\nRoPE encodes absolute position information into query and key vectors by rotating them in 2D subspaces. Given a tensor of shape `(batch_size, seq_len, num_heads, head_dim)` and a 1D tensor of positions of shape `(seq_len,)`, you must apply the rotation to both the query and key tensors.\n\nThe rotation is defined by angles $\\theta_i = 10000^{-2i/d}$ for $i \\in [0, d/2)$. For a vector $x$ of dimension $d$, we split it into $d/2$ pairs $(x_{2i}, x_{2i+1})$. Each pair is rotated by angle $\\theta_i \\cdot pos$. The rotated pair $(x'_{2i}, x'_{2i+1})$ is computed as:\n$$\nx'_{2i} = x_{2i} \\cos(\\theta_i \\cdot pos) - x_{2i+1} \\sin(\\theta_i \\cdot pos)\n$$\n$$\nx'_{2i+1} = x_{2i} \\sin(\\theta_i \\cdot pos) + x_{2i+1} \\cos(\\theta_i \\cdot pos)\n$$\n\nYou are provided with `q` and `k` tensors. You must return the rotated `q` and `k` tensors. The implementation must be efficient and vectorized using NumPy.",
+      "requirements": [
+        "Function must accept q, k, positions, and head_dim.",
+        "q and k have shape (batch_size, seq_len, num_heads, head_dim).",
+        "positions has shape (seq_len,).",
+        "head_dim must be even.",
+        "Return tuple (q_rotated, k_rotated) with same shapes as input.",
+        "Use standard NumPy operations.",
+        "Handle the interleaved rotation correctly (pairs of dimensions)."
+      ],
+      "function_signature": "def apply_rope(q: np.ndarray, k: np.ndarray, positions: np.ndarray, head_dim: int) -> tuple[np.ndarray, np.ndarray]:",
+      "public_examples": [
+        {
+          "input": "import numpy as np\nq = np.array([[[[1.0, 0.0, 0.0, 1.0]]]]) # shape (1, 1, 1, 4)\nk = np.array([[[[1.0, 0.0, 0.0, 1.0]]]])\npositions = np.array([0])\nhead_dim = 4\napply_rope(q, k, positions, head_dim)",
+          "output": "(array([[[[1., 0., 0., 1.]]]]), array([[[[1., 0., 0., 1.]]]]))"
+        },
+        {
+          "input": "import numpy as np\n# Test with position 1, head_dim 2. theta_0 = 10000^0 = 1. cos(1), sin(1)\nq = np.array([[[[1.0, 0.0]]]]) # shape (1, 1, 1, 2)\nk = np.array([[[[0.0, 1.0]]]])\npositions = np.array([1])\nhead_dim = 2\nres_q, res_k = apply_rope(q, k, positions, head_dim)\nprint(np.round(res_q, 4), np.round(res_k, 4))",
+          "output": "array([[[[ 0.5403,  0.8415]]]]) array([[[[-0.8415,  0.5403]]]])"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-12",
+      "title": "Expected Calibration Error with Equal-width Bins",
+      "difficulty": "medium",
+      "category": "probability_calibration",
+      "problem": "Implement a function to compute the Expected Calibration Error (ECE) for a set of binary classification predictions. The ECE is defined as the weighted average of the absolute difference between the average predicted probability and the actual accuracy within each bin. Use equal-width bins over the interval [0, 1].\n\nGiven:\n- `probs`: A 1D NumPy array of predicted probabilities for the positive class (values in [0, 1]).\n- `labels`: A 1D NumPy array of ground truth binary labels (0 or 1).\n- `n_bins`: An integer specifying the number of equal-width bins.\n\nThe bins are defined as [0, 1/n_bins), [1/n_bins, 2/n_bins), ..., [(n_bins-1)/n_bins, 1]. Note that the last bin is closed on the right to include the value 1.0.\n\nFor each bin $b$:\n1. Identify all samples where the predicted probability falls into bin $b$.\n2. If the bin is empty, skip it (contribution is 0).\n3. Calculate the average predicted probability ($acc_b$) and the average label ($conf_b$) for samples in that bin.\n4. Calculate the absolute difference $|acc_b - conf_b|$.\n5. Weight this difference by the proportion of samples in the bin relative to the total number of samples.\n\nSum these weighted differences to get the ECE.",
+      "requirements": [
+        "Use NumPy for vectorized operations where appropriate.",
+        "Handle edge cases such as empty bins or all probabilities being identical.",
+        "Ensure the last bin includes the value 1.0.",
+        "The function must return a single float representing the ECE.",
+        "Do not use external libraries other than NumPy."
+      ],
+      "function_signature": "def compute_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int) -> float:",
+      "public_examples": [
+        {
+          "input": "probs = np.array([0.1, 0.9, 0.5, 0.5]), labels = np.array([0, 1, 1, 0]), n_bins = 2",
+          "output": "0.25"
+        },
+        {
+          "input": "probs = np.array([0.2, 0.4, 0.6, 0.8]), labels = np.array([0, 0, 1, 1]), n_bins = 4",
+          "output": "0.0"
+        },
+        {
+          "input": "probs = np.array([1.0, 1.0, 0.0, 0.0]), labels = np.array([1, 1, 0, 0]), n_bins = 10",
+          "output": "0.0"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-13",
+      "title": "Hungarian Algorithm for Multi-Object Tracking Assignment",
+      "difficulty": "hard",
+      "category": "matching_assignment",
+      "problem": "Implement the Hungarian algorithm (Kuhn-Munkres) to solve the linear assignment problem for multi-object tracking. Given a cost matrix representing the dissimilarity between predicted bounding boxes and ground truth boxes, find the optimal one-to-one matching that minimizes the total cost.\n\nThe input is a 2D NumPy array `cost_matrix` of shape (N, M), where N is the number of predictions and M is the number of ground truths. The output should be a list of tuples `(row_idx, col_idx)` representing the matched pairs. The matching must be optimal (minimum total cost) and one-to-one (each row and column appears at most once).\n\nNote: The algorithm must handle rectangular matrices (N != M). If N > M, only M matches are returned. If M > N, only N matches are returned. The order of the returned list does not matter, but the set of pairs must be unique and optimal.",
+      "requirements": [
+        "Use only NumPy and standard Python libraries.",
+        "Implement the Hungarian algorithm from scratch or use `scipy.optimize.linear_sum_assignment` if available, but since external libs might be restricted in some contexts, a pure NumPy/Python implementation is preferred for robustness in benchmarking, OR explicitly allow scipy if standard. Given 'Prefer NumPy... or Python standard library', and Hungarian is complex, using `scipy` is often acceptable in these benchmarks unless strictly forbidden. However, to ensure 'deterministic' and 'no external files', and since scipy is a common dependency, I will allow scipy but provide a fallback or assume it's available. Actually, the prompt says 'Prefer NumPy, OpenCV, PyTorch, or Python standard library'. It does NOT explicitly list SciPy. To be safe and rigorous, I should implement a version that works with standard tools or assume SciPy is part of the 'standard' scientific stack often allowed. Let's look at the constraints again. 'No internet...'. Usually, in these coding benchmarks, `scipy` is allowed if not explicitly banned. However, implementing Hungarian from scratch is 'hard'. Let's assume `scipy.optimize.linear_sum_assignment` is allowed as it is the standard solution. If not, the reference answer would be very long. Let's check the difficulty 'hard'. A from-scratch Hungarian is very hard. Using scipy is medium. Let's stick to using `scipy` as it is the industry standard for this task in Python, and often included in 'standard library' contexts for data science benchmarks. If strict standard library only, this would be impossible in <80 lines. I will assume `scipy` is available.",
+        "The function must return a list of tuples.",
+        "Handle edge cases: empty matrix, single element, all zeros, large values.",
+        "Ensure the solution is deterministic."
+      ],
+      "function_signature": "def hungarian_assignment(cost_matrix: np.ndarray) -> list[tuple[int, int]]:",
+      "public_examples": [
+        {
+          "input": "np.array([[4, 1, 3], [2, 0, 5], [3, 2, 2]])",
+          "output": "[(0, 1), (1, 0), (2, 2)]"
+        },
+        {
+          "input": "np.array([[10, 5, 13, 15], [3, 9, 18, 3], [13, 15, 4, 12], [16, 11, 14, 1]])",
+          "output": "[(0, 1), (1, 0), (2, 2), (3, 3)]"
+        },
+        {
+          "input": "np.array([[1, 2], [3, 4], [5, 6]])",
+          "output": "[(0, 0), (1, 1)]"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-14",
+      "title": "Temporal Mask Smoothing with Boundary Preservation",
+      "difficulty": "medium",
+      "category": "sequence_masks",
+      "problem": "Implement a temporal smoothing function for binary segmentation masks across a video sequence. Given a sequence of binary masks (shape: T, H, W) where T is the number of frames, apply a temporal moving average filter to smooth noise while preserving sharp boundaries. The smoothing should be applied only to the temporal dimension. For each pixel location (h, w), compute the average of the mask values over a window of size `window_size` centered at the current frame. If the window extends beyond the sequence boundaries, use 'reflect' padding (mirror the sequence at the edges). After averaging, threshold the result at 0.5 to produce a binary output. However, to preserve boundaries, if a pixel changes state (0 to 1 or 1 to 0) in the original sequence between frame t-1 and t, or between t and t+1, the output at frame t should retain the original value at frame t instead of the smoothed value. This ensures that true object boundaries are not blurred by the temporal filter.",
+      "requirements": [
+        "Input is a 3D numpy array of shape (T, H, W) with binary values (0 or 1).",
+        "Output is a 3D numpy array of the same shape with binary values.",
+        "Use a temporal window of size `window_size` (odd integer) for averaging.",
+        "Apply 'reflect' padding for temporal boundaries.",
+        "Threshold the averaged values at 0.5.",
+        "Preserve original values at frame t if the pixel changes state in the original sequence at boundaries t-1/t or t/t+1.",
+        "Handle edge cases where T=1 or window_size > T."
+      ],
+      "function_signature": "def temporal_mask_smooth(masks: np.ndarray, window_size: int) -> np.ndarray:",
+      "public_examples": [
+        {
+          "input": "masks = np.array([[[0, 0], [0, 0]], [[1, 1], [1, 1]], [[1, 1], [1, 1]], [[0, 0], [0, 0]]], dtype=np.float32)\nwindow_size = 3",
+          "output": "np.array([[[0, 0], [0, 0]], [[1, 1], [1, 1]], [[1, 1], [1, 1]], [[0, 0], [0, 0]]], dtype=np.float32)"
+        },
+        {
+          "input": "masks = np.array([[[0, 0], [0, 0]], [[0, 1], [0, 0]], [[0, 0], [0, 0]]], dtype=np.float32)\nwindow_size = 3",
+          "output": "np.array([[[0, 0], [0, 0]], [[0, 0], [0, 0]], [[0, 0], [0, 0]]], dtype=np.float32)"
+        }
+      ]
+    },
+    {
+      "id": "XQWEN-15",
+      "title": "Cosine Annealing with Warm Restarts",
+      "difficulty": "medium",
+      "category": "learning_rate_schedules",
+      "problem": "Implement a learning rate scheduler that follows the Cosine Annealing with Warm Restarts strategy (SGDR). The scheduler starts with an initial learning rate `lr0`. It decays the learning rate following a cosine curve over a period of `T_mult * T_0` steps, where `T_0` is the base period length and `T_mult` is the multiplier for the period length after each restart. After each restart, the learning rate jumps back to `lr0` and the period length for the next cycle is multiplied by `T_mult`. The minimum learning rate is `lr_min`.\n\nThe formula for the learning rate at step `t` within a cycle of length `T_i` is:\n$$ lr(t) = lr_{min} + 0.5 \\times (lr_0 - lr_{min}) \\times (1 + \\cos(\\frac{\\pi \\times t_{current}}{T_i})) $$\nwhere $t_{current}$ is the number of steps elapsed since the start of the current cycle.\n\nYou are given a list of step indices `steps` (sorted, non-negative integers) and must return the learning rate at each of these steps. Note that the cycle index $i$ starts at 0. The length of the $i$-th cycle is $T_i = T_0 \\times T_{mult}^i$. The start step of the $i$-th cycle is the sum of lengths of all previous cycles.",
+      "requirements": [
+        "Function must accept `steps` (list of ints), `lr0` (float), `lr_min` (float), `T_0` (int), and `T_mult` (float).",
+        "Return a list of floats representing the learning rate at each step in `steps`.",
+        "Handle the case where `T_mult` is 1.0 (constant period length).",
+        "Handle the case where `T_mult` > 1.0 (increasing period length).",
+        "Ensure numerical stability and correct cycle boundary detection.",
+        "The implementation should be efficient for large step indices."
+      ],
+      "function_signature": "def cosine_annealing_warm_restarts(steps: list[int], lr0: float, lr_min: float, T_0: int, T_mult: float) -> list[float]:",
+      "public_examples": [
+        {
+          "input": "steps=[0, 5, 10, 15, 20], lr0=0.1, lr_min=0.01, T_0=10, T_mult=1.0",
+          "output": "[0.1, 0.055, 0.01, 0.055, 0.1]"
+        },
+        {
+          "input": "steps=[0, 10, 20, 30, 40], lr0=0.1, lr_min=0.0, T_0=10, T_mult=2.0",
+          "output": "[0.1, 0.0, 0.05, 0.1, 0.05]"
+        }
+      ]
+    }
+  ]
+}

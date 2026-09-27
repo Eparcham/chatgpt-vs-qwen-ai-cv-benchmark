@@ -1,0 +1,31 @@
+﻿author,challenge_id,title,status,severity,issue
+ChatGPT,XCHAT-01,Robust Percentile Normalization,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-02,Integral Image Rectangle Sums,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-03,Patchify and Unpatchify Images,minor_ambiguity,minor,Public prompt implies a meaningful patch_size but does not explicitly state patch_size > 0.
+ChatGPT,XCHAT-04,Soft-Argmax 2D Keypoints,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-05,Transform Boxes Through Crop and Resize,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-06,Camera Ray-Plane Intersection,minor_ambiguity,moderate,"'Reject' invalid ray intersections is not explicit about raise-vs-filter behavior, while Return (N,3) suggests fixed correspondence."
+ChatGPT,XCHAT-07,Depth Consistency Mask,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-08,Mean Multiclass Dice Score,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-09,Label-Smoothed Cross Entropy,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-10,Global-Norm Gradient Clipping,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-11,2D Sinusoidal Positional Encoding,minor_ambiguity,moderate,'Standard transformer frequencies' does not explicitly state whether frequency scaling uses D or the per-axis D/2 subdimension.
+ChatGPT,XCHAT-12,Temperature-Scaled Softmax,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-13,Greedy Cost Matching With Threshold,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-14,Causal Padding Mask for Variable Lengths,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+ChatGPT,XCHAT-15,Warmup Cosine LR Multiplier,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+Qwen,XQWEN-01,Adaptive Thresholding via Integral Image,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+Qwen,XQWEN-02,Polygon Area and Centroid via Shoelace,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+Qwen,XQWEN-03,Robust Grid Alignment via Hough Transform,minor_ambiguity,moderate,Hough thresholds and image-coordinate angle/sign conventions are under-specified.
+Qwen,XQWEN-04,Keypoint Heatmap Peak Extraction with Sub-pixel Refinement,artifact_conflict,moderate,Third public example conflicts with the stated quadratic-refinement formula.
+Qwen,XQWEN-05,Rotated Bounding Box Intersection Area,artifact_conflict,major,"First public example/private grader expects area 1.0, while geometry and Qwen's own reference give 2.0."
+Qwen,XQWEN-06,Camera Pose from Vanishing Points,artifact_conflict,major,Public identity examples conflict with v≈KR e_i; several private grader snippets also construct malformed 4-element vanishing vectors.
+Qwen,XQWEN-07,Depth-Aware Surface Normal Estimation,artifact_conflict,critical,Qwen reference crashes on valid constant-depth input; one public example also conflicts with finite-difference surface geometry.
+Qwen,XQWEN-08,Boundary F1 Score for Segmentation,artifact_conflict,major,Public example says 0.8 where the written Euclidean tolerance rule/reference yields 1.0; empty-empty convention also differs between prompt and reference/test.
+Qwen,XQWEN-09,Dice Loss with Class Weights,artifact_conflict,major,"Absent-class example/test expects near-zero loss, but the specified inverse-frequency formula and Qwen reference produce a nonzero loss."
+Qwen,XQWEN-10,Gradient Clipping by Global Norm,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+Qwen,XQWEN-11,Rotary Position Embedding (RoPE) Implementation,clean,none,No material contradiction identified in prompt/examples/reference during this audit.
+Qwen,XQWEN-12,Expected Calibration Error with Equal-width Bins,artifact_conflict,major,Two public expected ECE values and copied private tests conflict with the stated formula/Qwen reference.
+Qwen,XQWEN-13,Hungarian Algorithm for Multi-Object Tracking Assignment,minor_ambiguity,moderate,One requirements entry contains model self-deliberation about SciPy instead of a clean requirement.
+Qwen,XQWEN-14,Temporal Mask Smoothing with Boundary Preservation,artifact_conflict,major,Second public example removes an isolated transition that the explicit boundary-preservation rule/reference preserves.
+Qwen,XQWEN-15,Cosine Annealing with Warm Restarts,artifact_conflict,critical,"Public examples/private graders place lr_min at restart boundaries, contradicting formal SGDR half-open cycles and Qwen's own reference."

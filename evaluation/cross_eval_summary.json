@@ -1,0 +1,71 @@
+{
+  "experiment_name": "Cross-authored AI/CV code-generation evaluation",
+  "design": {
+    "chatgpt_authored_tasks": 15,
+    "qwen_authored_tasks": 15,
+    "qwen_answered": "15 ChatGPT-authored public tasks",
+    "chatgpt_answered": "15 Qwen-authored public tasks",
+    "reference_answers_exposed_to_answering_model": false
+  },
+  "systems": {
+    "qwen": {
+      "label": "Qwen 3.8 120B",
+      "serving": "self-hosted/private OpenAI-compatible endpoint",
+      "answer_generation_metadata": {
+        "temperature": 0,
+        "max_tokens": 3200,
+        "thinking": "disabled where supported",
+        "workers": 8
+      },
+      "exact_server_side_model_id": "not independently verified from the archived outputs"
+    },
+    "chatgpt": {
+      "label": "GPT-5.6 Sol",
+      "mode": "GPT-5.6 Sol",
+      "important_difference": "The ChatGPT side is GPT-5.6 Sol in both phases; the phases remain separate because their experimental designs differ."
+    }
+  },
+  "scores": {
+    "qwen_on_chatgpt_authored": {
+      "structured_score": 90.9,
+      "dimension_percentages": {
+        "functional_correctness_pct": 93.1,
+        "robustness_edge_cases_pct": 77.8,
+        "api_spec_compliance_pct": 90.7,
+        "algorithmic_flow_design_pct": 96.7,
+        "generated_code_efficiency_pct": 98.7,
+        "clarity_maintainability_pct": 90.0
+      }
+    },
+    "gpt_5_6_sol_on_qwen_authored": {
+      "structured_score": 96.4,
+      "dimension_percentages": {
+        "functional_correctness_pct": 97.7,
+        "robustness_edge_cases_pct": 92.4,
+        "api_spec_compliance_pct": 98.0,
+        "algorithmic_flow_design_pct": 98.7,
+        "generated_code_efficiency_pct": 97.3,
+        "clarity_maintainability_pct": 91.3
+      }
+    },
+    "directional_gap_points": 5.5
+  },
+  "benchmark_quality": {
+    "chatgpt_authored": {
+      "clean": 12,
+      "minor_ambiguity": 3
+    },
+    "qwen_authored": {
+      "artifact_conflict": 9,
+      "clean": 4,
+      "minor_ambiguity": 2
+    },
+    "important_note": "Qwen-authored tasks contain substantially more prompt/example/test/reference conflicts. Cross-eval scoring therefore follows the explicit written specification first and documents contradictions rather than blindly scoring against faulty examples."
+  },
+  "interpretation": [
+    "The cross-authored experiment preserves the direction of the earlier comparison but narrows the observed score gap.",
+    "The result is not a clean estimate of pure model difference because the two Cross-Eval directions use different task sets authored by the opposing systems.",
+    "The benchmark-authoring audit is itself an important result: question quality differs substantially by authoring set.",
+    "No universal model-accuracy claim should be made from these small benchmark sets."
+  ]
+}

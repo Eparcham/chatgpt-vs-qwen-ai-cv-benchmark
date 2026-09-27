@@ -1,0 +1,11 @@
+﻿phase,system,difficulty,n,mean_score
+Phase 1,GPT-5.6 Sol,easy,10,96.2
+Phase 1,Qwen 3.8 120B,easy,10,81.7
+Phase 1,GPT-5.6 Sol,hard,7,96.85714285714286
+Phase 1,Qwen 3.8 120B,hard,7,83.0
+Phase 1,GPT-5.6 Sol,medium,13,97.0
+Phase 1,Qwen 3.8 120B,medium,13,79.6923076923077
+Cross-Evaluation,ChatGPT GPT-5.6 Sol,hard,5,96.8
+Cross-Evaluation,ChatGPT GPT-5.6 Sol,medium,10,96.2
+Cross-Evaluation,Qwen 3.8 120B,hard,5,84.8
+Cross-Evaluation,Qwen 3.8 120B,medium,10,93.9

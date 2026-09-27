@@ -1,0 +1,273 @@
+{
+  "benchmark_name": "AI-CV Programming Benchmark",
+  "model": {
+    "name": "GPT-5.6 Sol",
+    "mode": "Sol",
+    "parameter_count": "Not provided in the benchmark materials"
+  },
+  "answer_source_policy": "Generated from problem statements, requirements, function signatures, and public examples only.",
+  "answers": [
+    {
+      "challenge_id": "AICV-01",
+      "solution_code": "import numpy as np\n\ndef normalize_image(image: np.ndarray, mean, std) -> np.ndarray:\n    image = np.asarray(image)\n    if image.ndim != 3:\n        raise ValueError(\"image must be HxWxC\")\n    if image.dtype != np.uint8:\n        raise ValueError(\"image must have dtype uint8\")\n    c = image.shape[2]\n    mean = np.asarray(mean, dtype=np.float32)\n    std = np.asarray(std, dtype=np.float32)\n    if mean.shape != (c,) or std.shape != (c,):\n        raise ValueError(\"mean and std must each have length C\")\n    if np.any(std <= 0):\n        raise ValueError(\"std values must be positive\")\n    x = image.astype(np.float32) / np.float32(255.0)\n    return ((x - mean[None, None, :]) / std[None, None, :]).astype(np.float32, copy=False)",
+      "explanation": "Converts uint8 pixels to float32 [0,1] and uses broadcasting for independent channel normalization.",
+      "time_complexity": "O(H*W*C)",
+      "space_complexity": "O(H*W*C)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-02",
+      "solution_code": "import cv2\nimport numpy as np\n\ndef letterbox(image: np.ndarray, target_hw: tuple[int, int], pad_value=114):\n    image = np.asarray(image)\n    if image.ndim != 3:\n        raise ValueError(\"image must be HxWxC\")\n    if len(target_hw) != 2:\n        raise ValueError(\"target_hw must contain height and width\")\n    target_h, target_w = int(target_hw[0]), int(target_hw[1])\n    if target_h <= 0 or target_w <= 0:\n        raise ValueError(\"target dimensions must be positive\")\n    h, w = image.shape[:2]\n    if h <= 0 or w <= 0:\n        raise ValueError(\"image dimensions must be positive\")\n\n    scale = min(target_w / w, target_h / h)\n    new_w = max(1, int(round(w * scale)))\n    new_h = max(1, int(round(h * scale)))\n    new_w = min(new_w, target_w)\n    new_h = min(new_h, target_h)\n\n    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)\n    dw, dh = target_w - new_w, target_h - new_h\n    left, top = dw // 2, dh // 2\n    right, bottom = dw - left, dh - top\n\n    out = cv2.copyMakeBorder(\n        resized, top, bottom, left, right,\n        cv2.BORDER_CONSTANT, value=pad_value\n    )\n    return out, float(scale), (left, top)",
+      "explanation": "Uses one aspect-preserving scale, then symmetric padding with odd remainders assigned to right/bottom.",
+      "time_complexity": "O(target_h*target_w*C)",
+      "space_complexity": "O(target_h*target_w*C)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-03",
+      "solution_code": "import numpy as np\n\ndef box_iou(boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:\n    a = np.asarray(boxes1, dtype=np.float64)\n    b = np.asarray(boxes2, dtype=np.float64)\n    if a.ndim != 2 or b.ndim != 2 or a.shape[1:] != (4,) or b.shape[1:] != (4,):\n        raise ValueError(\"boxes must have shapes (N,4) and (M,4)\")\n\n    inter_lt = np.maximum(a[:, None, :2], b[None, :, :2])\n    inter_rb = np.minimum(a[:, None, 2:], b[None, :, 2:])\n    inter_wh = np.maximum(inter_rb - inter_lt, 0.0)\n    inter = inter_wh[..., 0] * inter_wh[..., 1]\n\n    awh = np.maximum(a[:, 2:] - a[:, :2], 0.0)\n    bwh = np.maximum(b[:, 2:] - b[:, :2], 0.0)\n    area_a = awh[:, 0] * awh[:, 1]\n    area_b = bwh[:, 0] * bwh[:, 1]\n    union = area_a[:, None] + area_b[None, :] - inter\n\n    return np.divide(inter, union, out=np.zeros_like(inter), where=union > 0)",
+      "explanation": "Broadcasts both box sets to compute all intersections and unions without Python loops.",
+      "time_complexity": "O(N*M)",
+      "space_complexity": "O(N*M)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-04",
+      "solution_code": "import numpy as np\n\ndef nms(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float) -> list[int]:\n    boxes = np.asarray(boxes, dtype=np.float64)\n    scores = np.asarray(scores, dtype=np.float64)\n    if boxes.ndim != 2 or boxes.shape[1:] != (4,) or scores.shape != (len(boxes),):\n        raise ValueError(\"invalid input shapes\")\n\n    indices = np.arange(len(boxes))\n    order = np.lexsort((indices, -scores))\n    keep = []\n\n    while order.size:\n        i = int(order[0])\n        keep.append(i)\n        rest = order[1:]\n        if rest.size == 0:\n            break\n\n        lt = np.maximum(boxes[i, :2], boxes[rest, :2])\n        rb = np.minimum(boxes[i, 2:], boxes[rest, 2:])\n        wh = np.maximum(rb - lt, 0.0)\n        inter = wh[:, 0] * wh[:, 1]\n\n        wi = max(0.0, boxes[i, 2] - boxes[i, 0])\n        hi = max(0.0, boxes[i, 3] - boxes[i, 1])\n        area_i = wi * hi\n        rwh = np.maximum(boxes[rest, 2:] - boxes[rest, :2], 0.0)\n        area_r = rwh[:, 0] * rwh[:, 1]\n        union = area_i + area_r - inter\n        iou = np.divide(inter, union, out=np.zeros_like(inter), where=union > 0)\n\n        order = rest[iou <= iou_threshold]\n\n    return keep",
+      "explanation": "Processes boxes by descending score with deterministic index tie-breaking and suppresses only IoU strictly above the threshold.",
+      "time_complexity": "O(N^2)",
+      "space_complexity": "O(N)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-05",
+      "solution_code": "import numpy as np\n\ndef binary_segmentation_metrics(pred, target, ignore_index=255) -> dict:\n    pred = np.asarray(pred)\n    target = np.asarray(target)\n    if pred.shape != target.shape:\n        raise ValueError(\"pred and target must have identical shapes\")\n\n    valid = target != ignore_index\n    p = pred[valid] == 1\n    t = target[valid] == 1\n\n    tp = int(np.count_nonzero(p & t))\n    fp = int(np.count_nonzero(p & ~t))\n    fn = int(np.count_nonzero(~p & t))\n\n    def ratio(num, den):\n        return 1.0 if den == 0 else float(num / den)\n\n    return {\n        \"tp\": tp,\n        \"fp\": fp,\n        \"fn\": fn,\n        \"precision\": ratio(tp, tp + fp),\n        \"recall\": ratio(tp, tp + fn),\n        \"dice\": ratio(2 * tp, 2 * tp + fp + fn),\n        \"iou\": ratio(tp, tp + fp + fn),\n    }",
+      "explanation": "Excludes ignored target pixels before counting TP/FP/FN and applies the specified zero-denominator convention.",
+      "time_complexity": "O(P)",
+      "space_complexity": "O(P)",
+      "assumptions": [
+        "P is the number of mask pixels."
+      ]
+    },
+    {
+      "challenge_id": "AICV-06",
+      "solution_code": "import cv2\nimport numpy as np\n\ndef largest_component(mask: np.ndarray, connectivity=8) -> np.ndarray:\n    if connectivity not in (4, 8):\n        raise ValueError(\"connectivity must be 4 or 8\")\n    binary = (np.asarray(mask) != 0).astype(np.uint8)\n    if binary.ndim != 2:\n        raise ValueError(\"mask must be 2D\")\n\n    n, labels, stats, _ = cv2.connectedComponentsWithStats(\n        binary, connectivity=connectivity\n    )\n    if n <= 1:\n        return np.zeros(binary.shape, dtype=np.uint8)\n\n    areas = stats[1:, cv2.CC_STAT_AREA]\n    best_label = int(np.argmax(areas)) + 1\n    return (labels == best_label).astype(np.uint8)",
+      "explanation": "Binarizes nonzero pixels, computes connected-component statistics, and selects the first maximum-area foreground label.",
+      "time_complexity": "O(H*W)",
+      "space_complexity": "O(H*W)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-07",
+      "solution_code": "import cv2\nimport numpy as np\n\ndef clean_mask(mask: np.ndarray, kernel_size=3) -> np.ndarray:\n    if not isinstance(kernel_size, (int, np.integer)) or kernel_size <= 0 or kernel_size % 2 == 0:\n        raise ValueError(\"kernel_size must be a positive odd integer\")\n    binary = (np.asarray(mask) != 0).astype(np.uint8)\n    kernel = cv2.getStructuringElement(\n        cv2.MORPH_ELLIPSE, (int(kernel_size), int(kernel_size))\n    )\n    opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=1)\n    closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=1)\n    return (closed != 0).astype(np.uint8)",
+      "explanation": "Applies exactly one elliptical opening followed by exactly one elliptical closing.",
+      "time_complexity": "O(H*W*K^2)",
+      "space_complexity": "O(H*W)",
+      "assumptions": [
+        "K is kernel_size."
+      ]
+    },
+    {
+      "challenge_id": "AICV-08",
+      "solution_code": "import cv2\nimport numpy as np\n\ndef sobel_features(gray: np.ndarray) -> tuple[np.ndarray, np.ndarray]:\n    gray = np.asarray(gray)\n    if gray.ndim != 2:\n        raise ValueError(\"gray must be a 2D image\")\n\n    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)\n    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)\n\n    magnitude = np.hypot(gx, gy).astype(np.float32)\n    angle = np.mod(np.degrees(np.arctan2(gy, gx)), 180.0).astype(np.float32)\n    angle[magnitude == 0] = np.float32(0.0)\n    return magnitude, angle",
+      "explanation": "Computes CV_32F Sobel derivatives, Euclidean gradient magnitude, and wraps orientation to unsigned [0,180).",
+      "time_complexity": "O(H*W)",
+      "space_complexity": "O(H*W)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-09",
+      "solution_code": "import cv2\nimport numpy as np\n\ndef warp_quad(image: np.ndarray, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:\n    pts = np.asarray(points, dtype=np.float32)\n    if pts.shape != (4, 2):\n        raise ValueError(\"points must have shape (4,2)\")\n\n    sums = pts[:, 0] + pts[:, 1]\n    diffs = pts[:, 1] - pts[:, 0]\n    ordered = np.stack([\n        pts[np.argmin(sums)],\n        pts[np.argmin(diffs)],\n        pts[np.argmax(sums)],\n        pts[np.argmax(diffs)],\n    ]).astype(np.float32)\n\n    tl, tr, br, bl = ordered\n    width = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))\n    height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))\n    out_w = max(1, int(round(float(width))))\n    out_h = max(1, int(round(float(height))))\n\n    dst = np.array([\n        [0, 0],\n        [out_w - 1, 0],\n        [out_w - 1, out_h - 1],\n        [0, out_h - 1],\n    ], dtype=np.float32)\n\n    matrix = cv2.getPerspectiveTransform(ordered, dst)\n    warped = cv2.warpPerspective(image, matrix, (out_w, out_h))\n    return warped, ordered",
+      "explanation": "Orders points by the required sum/difference rules, derives rectangle size from opposite edges, then applies a perspective warp.",
+      "time_complexity": "O(out_h*out_w)",
+      "space_complexity": "O(out_h*out_w)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-10",
+      "solution_code": "import numpy as np\n\ndef bilinear_sample(image: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:\n    img = np.asarray(image, dtype=np.float64)\n    x = np.asarray(x, dtype=np.float64)\n    y = np.asarray(y, dtype=np.float64)\n    if img.ndim != 2 or x.shape != y.shape:\n        raise ValueError(\"image must be 2D and x/y shapes must match\")\n    h, w = img.shape\n    if h == 0 or w == 0:\n        raise ValueError(\"image must be non-empty\")\n\n    xc = np.clip(x, 0.0, w - 1.0)\n    yc = np.clip(y, 0.0, h - 1.0)\n    x0 = np.floor(xc).astype(np.intp)\n    y0 = np.floor(yc).astype(np.intp)\n    x1 = np.minimum(x0 + 1, w - 1)\n    y1 = np.minimum(y0 + 1, h - 1)\n\n    dx = xc - x0\n    dy = yc - y0\n\n    return (\n        img[y0, x0] * (1.0 - dx) * (1.0 - dy)\n        + img[y0, x1] * dx * (1.0 - dy)\n        + img[y1, x0] * (1.0 - dx) * dy\n        + img[y1, x1] * dx * dy\n    ).astype(np.float64, copy=False)",
+      "explanation": "Clamps coordinates, gathers four neighbors, and combines them with separable bilinear weights.",
+      "time_complexity": "O(Q)",
+      "space_complexity": "O(Q)",
+      "assumptions": [
+        "Q is the number of requested sample coordinates."
+      ]
+    },
+    {
+      "challenge_id": "AICV-11",
+      "solution_code": "import numpy as np\n\ndef backproject_depth(depth, fx, fy, cx, cy, depth_scale=1000.0, mask=None) -> np.ndarray:\n    depth = np.asarray(depth, dtype=np.float64)\n    if depth.ndim != 2:\n        raise ValueError(\"depth must be 2D\")\n    if fx <= 0 or fy <= 0 or depth_scale <= 0:\n        raise ValueError(\"fx, fy and depth_scale must be positive\")\n\n    valid = np.isfinite(depth) & (depth > 0)\n    if mask is not None:\n        mask = np.asarray(mask)\n        if mask.shape != depth.shape:\n            raise ValueError(\"mask shape must match depth\")\n        valid &= mask.astype(bool)\n\n    v, u = np.indices(depth.shape)\n    z = depth[valid] / float(depth_scale)\n    x = (u[valid] - float(cx)) * z / float(fx)\n    y = (v[valid] - float(cy)) * z / float(fy)\n    return np.column_stack((x, y, z)).astype(np.float64, copy=False)",
+      "explanation": "Selects valid pixels in row-major order and applies inverse pinhole projection after converting depth to meters.",
+      "time_complexity": "O(H*W)",
+      "space_complexity": "O(H*W)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-12",
+      "solution_code": "import numpy as np\n\ndef disparity_to_depth(disparity, focal_px: float, baseline_m: float) -> np.ndarray:\n    if focal_px <= 0 or baseline_m <= 0:\n        raise ValueError(\"focal_px and baseline_m must be positive\")\n    d = np.asarray(disparity, dtype=np.float32)\n    depth = np.zeros(d.shape, dtype=np.float32)\n    valid = np.isfinite(d) & (d > 0)\n    depth[valid] = np.float32(focal_px * baseline_m) / d[valid]\n    return depth",
+      "explanation": "Applies metric stereo depth only to finite positive disparities; invalid entries remain zero.",
+      "time_complexity": "O(P)",
+      "space_complexity": "O(P)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-13",
+      "solution_code": "import numpy as np\n\ndef fit_plane_svd(points: np.ndarray) -> np.ndarray:\n    pts = np.asarray(points, dtype=np.float64)\n    if pts.ndim != 2 or pts.shape[1:] != (3,) or len(pts) < 3:\n        raise ValueError(\"points must have shape (N,3), N>=3\")\n    if not np.all(np.isfinite(pts)):\n        raise ValueError(\"all points must be finite\")\n\n    centroid = pts.mean(axis=0)\n    centered = pts - centroid\n    if np.linalg.matrix_rank(centered) < 2:\n        raise ValueError(\"centered points must have rank at least 2\")\n\n    _, _, vh = np.linalg.svd(centered, full_matrices=False)\n    normal = vh[-1].astype(np.float64)\n    norm = np.linalg.norm(normal)\n    if norm == 0:\n        raise ValueError(\"invalid plane normal\")\n    normal /= norm\n\n    for component in normal:\n        if abs(component) > 1e-12:\n            if component < 0:\n                normal = -normal\n            break\n\n    d = -float(np.dot(normal, centroid))\n    return np.array([normal[0], normal[1], normal[2], d], dtype=np.float64)",
+      "explanation": "Centers points, takes the least-variance right singular vector as the unit normal, applies the deterministic sign rule, and derives d from the centroid.",
+      "time_complexity": "O(N)",
+      "space_complexity": "O(N)",
+      "assumptions": [
+        "The SVD is on an N x 3 matrix, so the fixed feature dimension makes runtime linear in N."
+      ]
+    },
+    {
+      "challenge_id": "AICV-14",
+      "solution_code": "import numpy as np\n\ndef project_points(points, K, R, t) -> tuple[np.ndarray, np.ndarray]:\n    points = np.asarray(points, dtype=np.float64)\n    K = np.asarray(K, dtype=np.float64)\n    R = np.asarray(R, dtype=np.float64)\n    t = np.asarray(t, dtype=np.float64)\n\n    if points.ndim != 2 or points.shape[1:] != (3,):\n        raise ValueError(\"points must have shape (N,3)\")\n    if K.shape != (3, 3) or R.shape != (3, 3) or t.shape != (3,):\n        raise ValueError(\"invalid K/R/t shapes\")\n\n    cam = points @ R.T + t\n    depth = cam[:, 2].copy()\n    uv = np.full((len(points), 2), np.nan, dtype=np.float64)\n\n    valid = depth > 0\n    projected = cam[valid] @ K.T\n    uv[valid] = projected[:, :2] / projected[:, 2:3]\n    return uv, depth",
+      "explanation": "Transforms world points to camera coordinates and projects only positive-depth points; the rest retain NaN image coordinates.",
+      "time_complexity": "O(N)",
+      "space_complexity": "O(N)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-15",
+      "solution_code": "import numpy as np\n\ndef bbox_from_mask(mask: np.ndarray):\n    mask = np.asarray(mask)\n    if mask.ndim != 2:\n        raise ValueError(\"mask must be 2D\")\n    ys, xs = np.nonzero(mask)\n    if xs.size == 0:\n        return None\n    return (\n        int(xs.min()),\n        int(ys.min()),\n        int(xs.max()) + 1,\n        int(ys.max()) + 1,\n    )",
+      "explanation": "Finds all foreground coordinates and uses max+1 for exclusive x2/y2 bounds.",
+      "time_complexity": "O(H*W)",
+      "space_complexity": "O(F)",
+      "assumptions": [
+        "F is the number of foreground pixels returned by np.nonzero."
+      ]
+    },
+    {
+      "challenge_id": "AICV-16",
+      "solution_code": "import torch\nfrom torch import nn\n\nclass ConvBNReLU(nn.Module):\n    def __init__(self, in_channels, out_channels, kernel_size=3):\n        super().__init__()\n        if not isinstance(kernel_size, int) or kernel_size <= 0 or kernel_size % 2 == 0:\n            raise ValueError(\"kernel_size must be a positive odd integer\")\n        self.block = nn.Sequential(\n            nn.Conv2d(\n                in_channels,\n                out_channels,\n                kernel_size=kernel_size,\n                stride=1,\n                padding=kernel_size // 2,\n                bias=False,\n            ),\n            nn.BatchNorm2d(out_channels),\n            nn.ReLU(inplace=True),\n        )\n\n    def forward(self, x):\n        return self.block(x)",
+      "explanation": "Uses the required Conv2d-BatchNorm2d-ReLU sequence; symmetric padding preserves spatial dimensions for odd kernels.",
+      "time_complexity": "O(B*H*W*Cin*Cout*K^2)",
+      "space_complexity": "O(B*H*W*Cout)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-17",
+      "solution_code": "import torch\nimport torch.nn.functional as F\n\ndef binary_focal_loss_with_logits(\n    logits, targets, alpha=0.25, gamma=2.0, reduction=\"mean\"\n):\n    if logits.shape != targets.shape:\n        raise ValueError(\"logits and targets must have the same shape\")\n    if reduction not in (\"none\", \"mean\", \"sum\"):\n        raise ValueError(\"invalid reduction\")\n\n    targets = targets.to(device=logits.device, dtype=logits.dtype)\n    bce = F.binary_cross_entropy_with_logits(logits, targets, reduction=\"none\")\n    p = torch.sigmoid(logits)\n    pt = torch.where(targets == 1, p, 1 - p)\n\n    alpha_pos = torch.as_tensor(alpha, dtype=logits.dtype, device=logits.device)\n    alpha_t = torch.where(targets == 1, alpha_pos, 1 - alpha_pos)\n    loss = alpha_t * (1 - pt).pow(gamma) * bce\n\n    if reduction == \"mean\":\n        return loss.mean()\n    if reduction == \"sum\":\n        return loss.sum()\n    return loss",
+      "explanation": "Uses stable BCE-with-logits for the base loss and sigmoid only for focal modulation and class weighting.",
+      "time_complexity": "O(P)",
+      "space_complexity": "O(P)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-18",
+      "solution_code": "import math\nimport torch\n\ndef scaled_dot_product_attention(q, k, v, mask=None):\n    if q.ndim != 4 or k.ndim != 4 or v.ndim != 4:\n        raise ValueError(\"q, k, v must be [B,H,N,D]\")\n    if q.shape[:2] != k.shape[:2] or k.shape[:2] != v.shape[:2]:\n        raise ValueError(\"batch/head dimensions must match\")\n    if q.shape[-1] != k.shape[-1] or k.shape[-2] != v.shape[-2]:\n        raise ValueError(\"incompatible q/k/v dimensions\")\n\n    scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.shape[-1])\n    if mask is not None:\n        mask = torch.as_tensor(mask, dtype=torch.bool, device=scores.device)\n        scores = scores.masked_fill(~mask, float(\"-inf\"))\n\n    attention_weights = torch.softmax(scores, dim=-1)\n    output = torch.matmul(attention_weights, v)\n    return output, attention_weights",
+      "explanation": "Computes scaled QK^T scores, applies True=allowed masking, softmaxes over keys, then combines values.",
+      "time_complexity": "O(B*H*N^2*D)",
+      "space_complexity": "O(B*H*N^2)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-19",
+      "solution_code": "import numpy as np\n\ndef topk_cosine(query: np.ndarray, database: np.ndarray, k: int):\n    q = np.asarray(query, dtype=np.float64)\n    db = np.asarray(database, dtype=np.float64)\n    if q.ndim != 1 or db.ndim != 2 or db.shape[1] != q.shape[0]:\n        raise ValueError(\"invalid query/database shapes\")\n    if k < 1 or k > len(db):\n        raise ValueError(\"k must be in [1, len(database)]\")\n\n    qnorm = np.linalg.norm(q)\n    if qnorm == 0:\n        raise ValueError(\"query vector must be non-zero\")\n\n    dnorm = np.linalg.norm(db, axis=1)\n    similarities = np.full(len(db), -np.inf, dtype=np.float64)\n    valid = dnorm > 0\n    similarities[valid] = (db[valid] @ q) / (dnorm[valid] * qnorm)\n\n    order = np.lexsort((np.arange(len(db)), -similarities))\n    indices = order[:k]\n    return indices, similarities[indices]",
+      "explanation": "Computes cosine similarity for nonzero database rows and uses lexicographic sorting for deterministic index tie-breaking.",
+      "time_complexity": "O(N*D + N log N)",
+      "space_complexity": "O(N)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-20",
+      "solution_code": "import torch\nimport torch.nn.functional as F\n\ndef batch_hard_triplet_loss(embeddings, labels, margin=0.2):\n    if embeddings.ndim != 2 or labels.ndim != 1 or embeddings.shape[0] != labels.shape[0]:\n        raise ValueError(\"invalid embeddings/labels shapes\")\n\n    labels = labels.to(embeddings.device)\n    n = embeddings.shape[0]\n    distances = torch.cdist(embeddings, embeddings, p=2)\n\n    same = labels[:, None] == labels[None, :]\n    self_mask = torch.eye(n, dtype=torch.bool, device=embeddings.device)\n    positive = same & ~self_mask\n    negative = ~same\n\n    losses = []\n    for i in range(n):\n        if positive[i].any() and negative[i].any():\n            hardest_positive = distances[i][positive[i]].max()\n            hardest_negative = distances[i][negative[i]].min()\n            losses.append(F.relu(hardest_positive - hardest_negative + margin))\n\n    if not losses:\n        return embeddings.sum() * 0.0\n    return torch.stack(losses).mean()",
+      "explanation": "Builds pairwise Euclidean distances, excludes self positives, selects batch-hard positive/negative pairs, and preserves gradient connectivity in the no-valid-anchor case.",
+      "time_complexity": "O(N^2*D)",
+      "space_complexity": "O(N^2)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-21",
+      "solution_code": "import numpy as np\n\ndef confusion_matrix(y_true, y_pred, num_classes: int, ignore_index=None) -> np.ndarray:\n    if num_classes <= 0:\n        raise ValueError(\"num_classes must be positive\")\n\n    yt = np.asarray(y_true).reshape(-1)\n    yp = np.asarray(y_pred).reshape(-1)\n    if yt.shape != yp.shape:\n        raise ValueError(\"y_true and y_pred must contain the same number of elements\")\n\n    if ignore_index is not None:\n        keep = yt != ignore_index\n        yt = yt[keep]\n        yp = yp[keep]\n\n    if np.any((yt < 0) | (yt >= num_classes)) or np.any((yp < 0) | (yp >= num_classes)):\n        raise ValueError(\"class id out of range\")\n\n    encoded = yt.astype(np.int64) * int(num_classes) + yp.astype(np.int64)\n    counts = np.bincount(encoded, minlength=num_classes * num_classes)\n    return counts.reshape(num_classes, num_classes).astype(np.int64, copy=False)",
+      "explanation": "Encodes each true/predicted class pair into one bincount index, yielding rows=true and columns=pred without sample loops.",
+      "time_complexity": "O(N + C^2)",
+      "space_complexity": "O(C^2)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-22",
+      "solution_code": "import torch\n\n@torch.no_grad()\ndef update_ema(ema_model, model, decay: float) -> None:\n    if not 0.0 <= decay <= 1.0:\n        raise ValueError(\"decay must be in [0,1]\")\n\n    src_params = dict(model.named_parameters())\n    ema_params = dict(ema_model.named_parameters())\n    if src_params.keys() != ema_params.keys():\n        raise ValueError(\"parameter names do not match\")\n\n    for name, ema_param in ema_params.items():\n        ema_param.mul_(decay).add_(src_params[name].detach(), alpha=1.0 - decay)\n\n    src_buffers = dict(model.named_buffers())\n    ema_buffers = dict(ema_model.named_buffers())\n    if src_buffers.keys() != ema_buffers.keys():\n        raise ValueError(\"buffer names do not match\")\n\n    for name, ema_buffer in ema_buffers.items():\n        ema_buffer.copy_(src_buffers[name].detach())",
+      "explanation": "Updates matching parameters in-place under no_grad and copies all matching buffers exactly from the source model.",
+      "time_complexity": "O(P+B)",
+      "space_complexity": "O(Pn+Bn)",
+      "assumptions": [
+        "P/B denote parameter/buffer scalar counts; Pn/Bn denote name-map overhead."
+      ]
+    },
+    {
+      "challenge_id": "AICV-23",
+      "solution_code": "def train_one_epoch_accum(model, loader, optimizer, criterion, device, accum_steps=1) -> float:\n    if accum_steps < 1:\n        raise ValueError(\"accum_steps must be >= 1\")\n\n    model.train()\n    optimizer.zero_grad(set_to_none=True)\n\n    total_loss = 0.0\n    batch_count = 0\n    pending = 0\n\n    for inputs, targets in loader:\n        inputs = inputs.to(device)\n        targets = targets.to(device)\n\n        loss = criterion(model(inputs), targets)\n        total_loss += float(loss.detach().item())\n        batch_count += 1\n        pending += 1\n\n        (loss / accum_steps).backward()\n\n        if pending == accum_steps:\n            optimizer.step()\n            optimizer.zero_grad(set_to_none=True)\n            pending = 0\n\n    if pending > 0:\n        correction = accum_steps / pending\n        for group in optimizer.param_groups:\n            for param in group[\"params\"]:\n                if param.grad is not None:\n                    param.grad.mul_(correction)\n        optimizer.step()\n        optimizer.zero_grad(set_to_none=True)\n\n    return 0.0 if batch_count == 0 else total_loss / batch_count",
+      "explanation": "Scales full accumulation groups by accum_steps and corrects leftover gradients so the final partial update equals the mean of only its present mini-batches.",
+      "time_complexity": "O(number_of_batches * model_step_cost)",
+      "space_complexity": "O(model gradient storage)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-24",
+      "solution_code": "import math\n\nclass EarlyStopping:\n    def __init__(self, patience=5, min_delta=0.0):\n        if patience < 1:\n            raise ValueError(\"patience must be >= 1\")\n        if min_delta < 0:\n            raise ValueError(\"min_delta must be >= 0\")\n        self.patience = int(patience)\n        self.min_delta = float(min_delta)\n        self.best = None\n        self.bad_epochs = 0\n\n    def step(self, metric) -> bool:\n        value = float(metric)\n        improved = (\n            math.isfinite(value)\n            and (self.best is None or value < self.best - self.min_delta)\n        )\n\n        if improved:\n            self.best = value\n            self.bad_epochs = 0\n            return False\n\n        self.bad_epochs += 1\n        return self.bad_epochs >= self.patience",
+      "explanation": "Tracks strict improvements for a minimizing metric and counts all other calls, including non-finite metrics, as consecutive bad epochs.",
+      "time_complexity": "O(1) per step",
+      "space_complexity": "O(1)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-25",
+      "solution_code": "def freeze_for_finetuning(model, trainable_prefixes) -> int:\n    prefixes = tuple(trainable_prefixes)\n    trainable_count = 0\n\n    for name, parameter in model.named_parameters():\n        trainable = any(name.startswith(prefix) for prefix in prefixes)\n        parameter.requires_grad_(trainable)\n        if trainable:\n            trainable_count += parameter.numel()\n\n    return int(trainable_count)",
+      "explanation": "Explicitly sets requires_grad on every parameter using startswith prefix matching and sums trainable scalar counts.",
+      "time_complexity": "O(P*K)",
+      "space_complexity": "O(K)",
+      "assumptions": [
+        "P is the number of parameter tensors and K the number of prefixes."
+      ]
+    },
+    {
+      "challenge_id": "AICV-26",
+      "solution_code": "import numpy as np\n\ndef sliding_window_predict(image, model, tile_size: int, overlap: int) -> np.ndarray:\n    image = np.asarray(image)\n    if image.ndim != 3:\n        raise ValueError(\"image must be HxWxC\")\n    if tile_size <= 0 or overlap < 0 or overlap >= tile_size:\n        raise ValueError(\"invalid tile_size/overlap\")\n\n    h, w, c = image.shape\n    stride = tile_size - overlap\n    padded_h = max(h, tile_size)\n    padded_w = max(w, tile_size)\n\n    padded = np.zeros((padded_h, padded_w, c), dtype=image.dtype)\n    padded[:h, :w] = image\n\n    def starts(length):\n        if length <= tile_size:\n            return [0]\n        values = list(range(0, length - tile_size + 1, stride))\n        final = max(length - tile_size, 0)\n        if not values or values[-1] != final:\n            values.append(final)\n        return values\n\n    ys = starts(padded_h)\n    xs = starts(padded_w)\n\n    total = np.zeros((padded_h, padded_w), dtype=np.float64)\n    count = np.zeros((padded_h, padded_w), dtype=np.float64)\n\n    for y in ys:\n        for x in xs:\n            tile = padded[y:y + tile_size, x:x + tile_size]\n            prediction = np.asarray(model(tile), dtype=np.float64)\n            if prediction.shape != (tile_size, tile_size):\n                raise ValueError(\"model output shape mismatch\")\n            total[y:y + tile_size, x:x + tile_size] += prediction\n            count[y:y + tile_size, x:x + tile_size] += 1.0\n\n    averaged = np.divide(total, count, out=np.zeros_like(total), where=count > 0)\n    return averaged[:h, :w]",
+      "explanation": "Generates coverage-complete tile starts, accumulates predictions and overlap counts, averages them, and crops to the original image.",
+      "time_complexity": "O(T*tile_size^2 + H*W)",
+      "space_complexity": "O(Hp*Wp)",
+      "assumptions": [
+        "T is tile count; Hp/Wp are padded dimensions."
+      ]
+    },
+    {
+      "challenge_id": "AICV-27",
+      "solution_code": "import numpy as np\n\ndef detection_ap(predictions, ground_truth, iou_threshold=0.5) -> float:\n    total_gt = sum(len(boxes) for boxes in ground_truth.values())\n    if total_gt == 0:\n        return 0.0\n\n    def iou_one_to_many(box, boxes):\n        if len(boxes) == 0:\n            return np.empty(0, dtype=np.float64)\n        a = np.asarray(box, dtype=np.float64)\n        b = np.asarray(boxes, dtype=np.float64)\n\n        lt = np.maximum(a[:2], b[:, :2])\n        rb = np.minimum(a[2:], b[:, 2:])\n        wh = np.maximum(rb - lt, 0.0)\n        inter = wh[:, 0] * wh[:, 1]\n\n        awh = np.maximum(a[2:] - a[:2], 0.0)\n        bwh = np.maximum(b[:, 2:] - b[:, :2], 0.0)\n        area_a = awh[0] * awh[1]\n        area_b = bwh[:, 0] * bwh[:, 1]\n        union = area_a + area_b - inter\n        return np.divide(inter, union, out=np.zeros_like(inter), where=union > 0)\n\n    order = sorted(\n        range(len(predictions)),\n        key=lambda i: (-float(predictions[i][\"score\"]), i)\n    )\n    matched = {\n        image_id: np.zeros(len(boxes), dtype=bool)\n        for image_id, boxes in ground_truth.items()\n    }\n\n    tp = np.zeros(len(order), dtype=np.float64)\n    fp = np.zeros(len(order), dtype=np.float64)\n\n    for rank, pred_index in enumerate(order):\n        pred = predictions[pred_index]\n        image_id = pred[\"image_id\"]\n        gt_boxes = ground_truth.get(image_id, [])\n        used = matched.setdefault(image_id, np.zeros(len(gt_boxes), dtype=bool))\n\n        ious = iou_one_to_many(pred[\"box\"], gt_boxes)\n        available = np.flatnonzero(~used)\n        if available.size:\n            best = available[np.argmax(ious[available])]\n            if ious[best] >= iou_threshold:\n                used[best] = True\n                tp[rank] = 1.0\n                continue\n        fp[rank] = 1.0\n\n    tp_cum = np.cumsum(tp)\n    fp_cum = np.cumsum(fp)\n    recall = tp_cum / total_gt\n    precision = tp_cum / np.maximum(tp_cum + fp_cum, 1e-12)\n\n    mrec = np.concatenate(([0.0], recall, [1.0]))\n    mpre = np.concatenate(([0.0], precision, [0.0]))\n    for i in range(len(mpre) - 2, -1, -1):\n        mpre[i] = max(mpre[i], mpre[i + 1])\n\n    changes = np.flatnonzero(mrec[1:] != mrec[:-1])\n    return float(np.sum(\n        (mrec[changes + 1] - mrec[changes]) * mpre[changes + 1]\n    ))",
+      "explanation": "Uses stable descending-score ordering, greedy highest-IoU unmatched-GT assignment per image, then integrates the all-point monotonic precision envelope.",
+      "time_complexity": "O(P log P + sum prediction-to-GT comparisons)",
+      "space_complexity": "O(P+G)",
+      "assumptions": []
+    },
+    {
+      "challenge_id": "AICV-28",
+      "solution_code": "import numpy as np\n\ndef weighted_box_fusion(boxes, scores, iou_threshold=0.55):\n    boxes = np.asarray(boxes, dtype=np.float64)\n    scores = np.asarray(scores, dtype=np.float64)\n    if boxes.ndim != 2 or boxes.shape[1:] != (4,) or scores.shape != (len(boxes),):\n        raise ValueError(\"invalid boxes/scores shapes\")\n    if np.any(scores < 0):\n        raise ValueError(\"scores must be non-negative\")\n\n    def iou(a, b):\n        lt = np.maximum(a[:2], b[:2])\n        rb = np.minimum(a[2:], b[2:])\n        wh = np.maximum(rb - lt, 0.0)\n        inter = wh[0] * wh[1]\n        awh = np.maximum(a[2:] - a[:2], 0.0)\n        bwh = np.maximum(b[2:] - b[:2], 0.0)\n        union = awh[0] * awh[1] + bwh[0] * bwh[1] - inter\n        return 0.0 if union <= 0 else float(inter / union)\n\n    order = np.lexsort((np.arange(len(scores)), -scores))\n    clusters = []\n\n    for idx in order:\n        idx = int(idx)\n        joined = False\n        for cluster in clusters:\n            if iou(boxes[idx], cluster[\"fused_box\"]) >= iou_threshold:\n                cluster[\"indices\"].append(idx)\n                inds = np.asarray(cluster[\"indices\"], dtype=int)\n                weights = scores[inds]\n                weight_sum = weights.sum()\n                if weight_sum > 0:\n                    cluster[\"fused_box\"] = np.average(\n                        boxes[inds], axis=0, weights=weights\n                    )\n                else:\n                    cluster[\"fused_box\"] = boxes[inds].mean(axis=0)\n                joined = True\n                break\n\n        if not joined:\n            clusters.append({\n                \"indices\": [idx],\n                \"fused_box\": boxes[idx].copy(),\n            })\n\n    if not clusters:\n        return np.empty((0, 4), dtype=np.float64), np.empty((0,), dtype=np.float64)\n\n    fused_boxes = np.stack([c[\"fused_box\"] for c in clusters]).astype(np.float64)\n    fused_scores = np.array(\n        [scores[np.asarray(c[\"indices\"], dtype=int)].mean() for c in clusters],\n        dtype=np.float64,\n    )\n    return fused_boxes, fused_scores",
+      "explanation": "Greedily assigns each score-ordered box to the first qualifying cluster, recomputing score-weighted coordinates after every insertion while preserving cluster creation order.",
+      "time_complexity": "O(N^2 + coordinate recomputation cost)",
+      "space_complexity": "O(N)",
+      "assumptions": [
+        "If every score in a cluster is zero, an unweighted coordinate mean is used because the requested score-weighted average is mathematically undefined at zero total weight."
+      ]
+    },
+    {
+      "challenge_id": "AICV-29",
+      "solution_code": "import numpy as np\n\ndef update_centroid_tracks(prev_tracks, detections, max_distance: float) -> dict:\n    if max_distance < 0:\n        raise ValueError(\"max_distance must be non-negative\")\n\n    detections = np.asarray(detections, dtype=np.float64)\n    if detections.size == 0:\n        detections = detections.reshape(0, 2)\n    if detections.ndim != 2 or detections.shape[1:] != (2,):\n        raise ValueError(\"detections must have shape (N,2)\")\n\n    normalized_tracks = {}\n    for track_id, centroid in prev_tracks.items():\n        c = np.asarray(centroid, dtype=np.float64)\n        if c.shape != (2,):\n            raise ValueError(\"each previous centroid must have shape (2,)\")\n        normalized_tracks[int(track_id)] = c\n\n    candidates = []\n    for track_id, centroid in normalized_tracks.items():\n        if len(detections):\n            distances = np.linalg.norm(detections - centroid, axis=1)\n            for det_index in np.flatnonzero(distances <= max_distance):\n                candidates.append(\n                    (float(distances[det_index]), int(track_id), int(det_index))\n                )\n\n    candidates.sort(key=lambda item: (item[0], item[1], item[2]))\n\n    used_tracks = set()\n    used_detections = set()\n    result = {}\n\n    for _, track_id, det_index in candidates:\n        if track_id in used_tracks or det_index in used_detections:\n            continue\n        result[track_id] = detections[det_index].astype(np.float64, copy=True)\n        used_tracks.add(track_id)\n        used_detections.add(det_index)\n\n    next_id = max(normalized_tracks.keys(), default=-1) + 1\n    for det_index in range(len(detections)):\n        if det_index not in used_detections:\n            result[next_id] = detections[det_index].astype(np.float64, copy=True)\n            next_id += 1\n\n    return result",
+      "explanation": "Builds every admissible track-detection pair, globally sorts by the required tuple, greedily matches unique sides, drops unmatched old tracks, and assigns sequential IDs to unmatched detections.",
+      "time_complexity": "O(T*D + C log C)",
+      "space_complexity": "O(C+T+D)",
+      "assumptions": [
+        "C is the number of candidate pairs within max_distance."
+      ]
+    },
+    {
+      "challenge_id": "AICV-30",
+      "solution_code": "import math\nimport torch\nimport torch.nn.functional as F\nfrom torch import nn\n\nclass LoRALinear(nn.Module):\n    def __init__(self, in_features, out_features, r=4, alpha=1.0, bias=True):\n        super().__init__()\n        if r < 1:\n            raise ValueError(\"r must be >= 1\")\n\n        self.in_features = int(in_features)\n        self.out_features = int(out_features)\n        self.r = int(r)\n        self.alpha = float(alpha)\n        self.scaling = self.alpha / self.r\n\n        self.weight = nn.Parameter(\n            torch.empty(self.out_features, self.in_features),\n            requires_grad=False,\n        )\n        if bias:\n            self.bias = nn.Parameter(\n                torch.empty(self.out_features),\n                requires_grad=False,\n            )\n        else:\n            self.register_parameter(\"bias\", None)\n\n        self.A = nn.Parameter(torch.empty(self.r, self.in_features))\n        self.B = nn.Parameter(torch.empty(self.out_features, self.r))\n\n        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))\n        if self.bias is not None:\n            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)\n            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0\n            nn.init.uniform_(self.bias, -bound, bound)\n\n        nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))\n        nn.init.zeros_(self.B)\n\n    def forward(self, x):\n        base = F.linear(x, self.weight, self.bias)\n        lora = F.linear(F.linear(x, self.A, bias=None), self.B, bias=None)\n        return base + self.scaling * lora",
+      "explanation": "Implements a frozen nn.Linear-equivalent base plus a trainable low-rank A/B update; zero-initialized B makes the initial LoRA contribution exactly zero.",
+      "time_complexity": "O(...*in_features*out_features + ...*r*(in_features+out_features))",
+      "space_complexity": "O(output activations + low-rank intermediate)",
+      "assumptions": [
+        "The ellipsis denotes the product of arbitrary leading input dimensions."
+      ]
+    }
+  ]
+}

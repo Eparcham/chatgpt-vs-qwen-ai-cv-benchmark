@@ -1,0 +1,13 @@
+﻿phase,dimension,gpt_pct,qwen_pct,gap_points
+Phase 1,Functional correctness,98.8,86.4,12.399999999999991
+Phase 1,Robustness / edge cases,92.0,55.0,37.0
+Phase 1,API / specification compliance,98.0,78.0,20.0
+Phase 1,Algorithmic flow / design,97.0,82.0,15.0
+Phase 1,Generated-code runtime efficiency,80.2,85.2,-5.0
+Phase 1,Code clarity / maintainability,95.0,82.0,13.0
+Cross-Evaluation,Functional correctness,97.73333333333333,93.06666666666666,4.666666666666671
+Cross-Evaluation,Robustness / edge cases,92.44444444444446,77.77777777777779,14.666666666666671
+Cross-Evaluation,API / specification compliance,98.00000000000001,90.66666666666666,7.333333333333357
+Cross-Evaluation,Algorithmic flow / design,98.66666666666667,96.66666666666666,2.000000000000014
+Cross-Evaluation,Generated-code efficiency,97.33333333333333,98.66666666666667,-1.3333333333333428
+Cross-Evaluation,Code clarity / maintainability,91.33333333333333,90.0,1.3333333333333286

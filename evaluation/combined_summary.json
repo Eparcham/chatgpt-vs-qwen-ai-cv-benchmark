@@ -1,0 +1,16 @@
+{
+  "phase1_initial_shared_30_task_benchmark": {
+    "qwen_3_8_120b_overall_pct": 79.9,
+    "gap_points": 16.3,
+    "chatgpt_average_challenge_quality_pct": 96.7,
+    "qwen_average_challenge_quality_pct": 81.1,
+    "gpt_5_6_sol_overall_pct": 96.2
+  },
+  "phase2_cross_authored": {
+    "gpt_5_6_sol_on_qwen_authored_score": 96.4,
+    "qwen_3_8_120b_on_chatgpt_authored_score": 90.9,
+    "gap_points": 5.5
+  },
+  "do_not_pool_warning": "GPT-5.6 Sol is the ChatGPT-side model label in both phases. The phases are still reported separately because Phase 1 is a same-task 30-question comparison, whereas Phase 2 uses different opponent-authored task sets in each direction.",
+  "overall_reading": "Across both phases, ChatGPT-side responses scored higher under the published rubric, but the exact gap is benchmark/configuration dependent. Cross-evaluation reduced the observed gap and exposed substantial authoring-quality problems in the Qwen-generated question set."
+}
