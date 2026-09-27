@@ -1,0 +1,67 @@
+{
+  "benchmark": {
+    "name": "AI-CV Programming Benchmark",
+    "tasks": 30,
+    "scoring_method": "Expert-adjusted multi-dimensional review",
+    "weights": {
+      "Functional correctness": 50,
+      "Robustness / edge cases": 15,
+      "API / spec compliance": 10,
+      "Algorithmic flow / design": 10,
+      "Generated-code runtime efficiency": 5,
+      "Code clarity / maintainability": 10
+    },
+    "important_note": "The final score is not the same as raw unit-test pass rate. Reference implementations were independently audited and were not treated as infallible."
+  },
+  "models": {
+    "ChatGPT 5.6 Instant": {
+      "specification": {
+        "mode": "Instant",
+        "parameter_count": "Not provided in benchmark materials"
+      },
+      "dimension_scores": {
+        "Functional correctness": 98.8,
+        "Robustness / edge cases": 92.0,
+        "API / spec compliance": 98.0,
+        "Algorithmic flow / design": 97.0,
+        "Generated-code runtime efficiency": 80.2,
+        "Code clarity / maintainability": 95.0
+      },
+      "overall_expert_score": 96.2,
+      "average_challenge_quality_score": 96.7,
+      "code_statistics": {
+        "answer_count": 30,
+        "total_code_lines": 829,
+        "avg_code_lines": 27.6,
+        "median_code_lines": 24.0,
+        "avg_code_chars": 967.5,
+        "avg_explanation_chars": 122.2
+      }
+    },
+    "Qwen 3.8 120B": {
+      "specification": {
+        "parameter_count": "120B",
+        "note": "Model description supplied for this benchmark run"
+      },
+      "dimension_scores": {
+        "Functional correctness": 86.4,
+        "Robustness / edge cases": 55.0,
+        "API / spec compliance": 78.0,
+        "Algorithmic flow / design": 82.0,
+        "Generated-code runtime efficiency": 85.2,
+        "Code clarity / maintainability": 82.0
+      },
+      "overall_expert_score": 79.9,
+      "average_challenge_quality_score": 81.1,
+      "code_statistics": {
+        "answer_count": 30,
+        "total_code_lines": 1220,
+        "avg_code_lines": 40.7,
+        "median_code_lines": 36.5,
+        "avg_code_chars": 1438.2,
+        "avg_explanation_chars": 205.9
+      }
+    }
+  },
+  "latency_note": "Model response-generation latency is not numerically scored because matched per-task latency logs for both models were not supplied. Generated-code execution speed is scored separately."
+}
