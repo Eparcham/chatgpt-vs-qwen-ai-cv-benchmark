@@ -134,6 +134,39 @@ Qwen 3.8 120B solves many normal-path implementations correctly and its generate
 Its lower overall score is mainly caused by specification mismatches and edge-case failures rather than an across-the-board inability to implement the algorithms.
 </p>
 
+
+<h2>Benchmark construction and possible bias</h2>
+<p>
+The initial question pool was prepared with assistance from multiple cloud chatbots and DeepSeek,
+then reviewed and filtered to favor general AI/CV programming tasks. This process can still introduce
+question-author bias, reference-answer bias, and judge/evaluation bias. The reported percentages should
+therefore be interpreted as results on this benchmark rather than universal model accuracy.
+</p>
+
+<h2>How the evaluation should be interpreted</h2>
+<p>
+The scoring structure remains unchanged: functional correctness (50%), robustness/edge cases (15%),
+API/specification compliance (10%), algorithmic flow/design (10%), generated-code runtime efficiency (5%),
+and code clarity/maintainability (10%). Evaluation was not based only on literal similarity to a reference solution.
+Reference implementations were treated as evaluation aids and reviewed separately when their behavior appeared questionable.
+</p>
+
+<h2>Serving conditions and response latency</h2>
+<p>
+The two systems were not served under equivalent infrastructure. Qwen 3.8 120B was run on constrained/self-hosted
+hardware, and long reasoning made several tasks slow. Some missing answers required a recovery run with a tighter
+generation budget and reduced/disabled thinking. ChatGPT 5.6 Instant was accessed through cloud infrastructure.
+For this reason, model response-generation latency is not included as a formal numeric comparison.
+The runtime dimension in this report refers only to execution efficiency of generated code.
+</p>
+
+<h2>Planned cross-evaluation</h2>
+<p>
+A follow-up experiment will use cross-authored question sets: questions authored from the ChatGPT side will be answered
+by Qwen, and questions authored from the Qwen side will be answered by ChatGPT. The goal is to reduce question-author,
+reference, and judge bias and to test whether the observed ranking remains stable after reversing question authorship.
+</p>
+
 <h2>Limitations</h2>
 <p>
 The final numbers are benchmark-specific expert scores, not universal measures of model intelligence.

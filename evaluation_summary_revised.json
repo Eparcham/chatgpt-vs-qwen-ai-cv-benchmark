@@ -1,67 +1,43 @@
 {
-  "benchmark": {
-    "name": "AI-CV Programming Benchmark",
-    "tasks": 30,
-    "scoring_method": "Expert-adjusted multi-dimensional review",
-    "weights": {
-      "Functional correctness": 50,
-      "Robustness / edge cases": 15,
-      "API / spec compliance": 10,
-      "Algorithmic flow / design": 10,
-      "Generated-code runtime efficiency": 5,
-      "Code clarity / maintainability": 10
-    },
-    "important_note": "The final score is not the same as raw unit-test pass rate. Reference implementations were independently audited and were not treated as infallible."
-  },
+  "benchmark_name": "AI-CV Programming Benchmark",
   "models": {
     "ChatGPT 5.6 Instant": {
-      "specification": {
-        "mode": "Instant",
-        "parameter_count": "Not provided in benchmark materials"
-      },
-      "dimension_scores": {
-        "Functional correctness": 98.8,
-        "Robustness / edge cases": 92.0,
-        "API / spec compliance": 98.0,
-        "Algorithmic flow / design": 97.0,
-        "Generated-code runtime efficiency": 80.2,
-        "Code clarity / maintainability": 95.0
-      },
-      "overall_expert_score": 96.2,
-      "average_challenge_quality_score": 96.7,
-      "code_statistics": {
-        "answer_count": 30,
-        "total_code_lines": 829,
-        "avg_code_lines": 27.6,
-        "median_code_lines": 24.0,
-        "avg_code_chars": 967.5,
-        "avg_explanation_chars": 122.2
-      }
+      "functional_correctness_pct": 98.8,
+      "robustness_edge_cases_pct": 92.0,
+      "api_spec_compliance_pct": 98.0,
+      "algorithmic_flow_design_pct": 97.0,
+      "generated_code_runtime_efficiency_pct": 80.2,
+      "code_clarity_maintainability_pct": 95.0,
+      "overall_expert_adjusted_score_pct": 96.2,
+      "average_challenge_quality_pct": 96.7
     },
     "Qwen 3.8 120B": {
-      "specification": {
-        "parameter_count": "120B",
-        "note": "Model description supplied for this benchmark run"
-      },
-      "dimension_scores": {
-        "Functional correctness": 86.4,
-        "Robustness / edge cases": 55.0,
-        "API / spec compliance": 78.0,
-        "Algorithmic flow / design": 82.0,
-        "Generated-code runtime efficiency": 85.2,
-        "Code clarity / maintainability": 82.0
-      },
-      "overall_expert_score": 79.9,
-      "average_challenge_quality_score": 81.1,
-      "code_statistics": {
-        "answer_count": 30,
-        "total_code_lines": 1220,
-        "avg_code_lines": 40.7,
-        "median_code_lines": 36.5,
-        "avg_code_chars": 1438.2,
-        "avg_explanation_chars": 205.9
-      }
+      "functional_correctness_pct": 86.4,
+      "robustness_edge_cases_pct": 55.0,
+      "api_spec_compliance_pct": 78.0,
+      "algorithmic_flow_design_pct": 82.0,
+      "generated_code_runtime_efficiency_pct": 85.2,
+      "code_clarity_maintainability_pct": 82.0,
+      "overall_expert_adjusted_score_pct": 79.9,
+      "average_challenge_quality_pct": 81.1
     }
   },
-  "latency_note": "Model response-generation latency is not numerically scored because matched per-task latency logs for both models were not supplied. Generated-code execution speed is scored separately."
+  "scoring_weights": {
+    "functional_correctness": 50,
+    "robustness_edge_cases": 15,
+    "api_specification_compliance": 10,
+    "algorithmic_flow_design": 10,
+    "generated_code_runtime_efficiency": 5,
+    "code_clarity_maintainability": 10
+  },
+  "methodology_notes": {
+    "benchmark_origin": "The initial question pool was prepared with assistance from multiple cloud chatbots and DeepSeek, then reviewed and filtered to keep broad AI/CV programming tasks. Question-author, reference-answer, and judge bias may still remain.",
+    "evaluation_pipeline": "Evaluation was not based only on similarity to a reference implementation. The published score combines functional correctness, robustness/edge cases, API/specification compliance, algorithmic flow/design, generated-code runtime efficiency, and code clarity/maintainability using the weights listed above.",
+    "reference_answer_policy": "Reference implementations were treated as evaluation aids rather than infallible ground truth. Requirements and actual behavior were reviewed separately when reference behavior appeared questionable.",
+    "qwen_serving_condition": "Qwen 3.8 120B was executed on constrained/self-hosted hardware. Long reasoning made several tasks slow, and some missing tasks required recovery with a tighter output budget and reduced/disabled thinking.",
+    "chatgpt_serving_condition": "ChatGPT 5.6 Instant was accessed through cloud infrastructure, so model-response latency was not directly comparable to the self-hosted Qwen environment.",
+    "latency_policy": "Model response-generation latency is not given a numeric comparison score. The runtime score refers to execution efficiency of the generated code, not model inference speed.",
+    "planned_cross_evaluation": "The next experiment will use cross-authored question sets: ChatGPT-side questions will be answered by Qwen, and Qwen-side questions will be answered by ChatGPT, to test sensitivity to question-author and judge bias."
+  },
+  "interpretation_warning": "These are benchmark-specific engineering results on 30 tasks and should not be interpreted as universal model accuracy or a definitive ranking of model intelligence."
 }
