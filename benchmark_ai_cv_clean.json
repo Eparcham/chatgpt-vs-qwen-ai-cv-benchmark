@@ -1,0 +1,847 @@
+{
+  "benchmark": {
+    "name": "AI-CV Programming Benchmark",
+    "version": "1.0",
+    "language": "English",
+    "task_count": 30,
+    "purpose": "Evaluate AI programming quality across 30 deterministic artificial-intelligence and computer-vision coding challenges.",
+    "evaluation_note": "The runner must never send reference_answer or grader_tests to the tested model. Use them only after model responses have been collected.",
+    "recommended_scoring": {
+      "functional_correctness": 70,
+      "edge_cases_and_robustness": 15,
+      "complexity_and_efficiency": 10,
+      "clarity_and_api_compliance": 5
+    },
+    "domains": [
+      "NumPy",
+      "OpenCV",
+      "PyTorch",
+      "object detection",
+      "segmentation",
+      "3D vision",
+      "stereo/depth",
+      "camera geometry",
+      "transformers",
+      "metric learning",
+      "training loops",
+      "tracking",
+      "LoRA"
+    ]
+  },
+  "model_answer_contract": {
+    "format": "JSON object only",
+    "fields": {
+      "challenge_id": "string",
+      "solution_code": "string containing complete Python solution",
+      "explanation": "short technical explanation",
+      "time_complexity": "string",
+      "space_complexity": "string",
+      "assumptions": "array of strings"
+    }
+  },
+  "challenges": [
+    {
+      "id": "AICV-01",
+      "title": "Channel-wise Image Normalization",
+      "difficulty": "easy",
+      "category": "NumPy / preprocessing",
+      "problem": "Implement channel-wise normalization for a uint8 HxWxC image.\nConvert pixels to float32 in [0, 1], then apply (x - mean) / std independently per channel.",
+      "requirements": [
+        "Use NumPy only.",
+        "Input image must be HxWxC.",
+        "mean and std must each have length C.",
+        "Reject non-positive std values.",
+        "Return float32 with the same shape."
+      ],
+      "function_signature": "normalize_image(image: np.ndarray, mean, std) -> np.ndarray",
+      "public_examples": [
+        {
+          "input": "image=np.zeros((2,2,3), uint8), mean=[0.5,0.5,0.5], std=[0.5,0.5,0.5]",
+          "expected": "all values are -1.0 and dtype is float32"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Broadcast mean and std over height and width after converting to float32.",
+        "code": "import numpy as np\n\ndef normalize_image(image: np.ndarray, mean, std) -> np.ndarray:\n    if image.ndim != 3:\n        raise ValueError(\"image must be HxWxC\")\n    c = image.shape[2]\n    mean = np.asarray(mean, dtype=np.float32)\n    std = np.asarray(std, dtype=np.float32)\n    if mean.shape != (c,) or std.shape != (c,):\n        raise ValueError(\"mean and std must have length C\")\n    if np.any(std <= 0):\n        raise ValueError(\"std must be positive\")\n    x = image.astype(np.float32) / 255.0\n    return (x - mean.reshape(1, 1, c)) / std.reshape(1, 1, c)"
+      },
+      "grader_tests": [
+        "Shape preserved",
+        "Numerically matches channel-wise normalization",
+        "Raises ValueError for std<=0"
+      ]
+    },
+    {
+      "id": "AICV-02",
+      "title": "Aspect-ratio Preserving Letterbox",
+      "difficulty": "easy",
+      "category": "OpenCV / preprocessing",
+      "problem": "Resize an HxWxC image to fit inside a target (height, width) while preserving aspect ratio,\nthen pad equally on opposite sides with a constant value.",
+      "requirements": [
+        "Use OpenCV for resizing and border padding.",
+        "Scale = min(target_w / w, target_h / h).",
+        "Rounded resized dimensions must be at least 1.",
+        "Put any odd padding remainder on the right/bottom.",
+        "Return (letterboxed_image, scale, (pad_left, pad_top))."
+      ],
+      "function_signature": "letterbox(image: np.ndarray, target_hw: tuple[int,int], pad_value=114)",
+      "public_examples": [
+        {
+          "input": "image shape=(100,200,3), target_hw=(320,320)",
+          "expected": "output shape=(320,320,3), scale=1.6, pad_left=0, pad_top=80"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Compute one scale factor, resize once, then split the remaining width/height padding.",
+        "code": "import cv2\nimport numpy as np\n\ndef letterbox(image: np.ndarray, target_hw: tuple[int, int], pad_value=114):\n    if image.ndim not in (2, 3):\n        raise ValueError(\"image must be HxW or HxWxC\")\n    target_h, target_w = map(int, target_hw)\n    if target_h <= 0 or target_w <= 0:\n        raise ValueError(\"target size must be positive\")\n    h, w = image.shape[:2]\n    scale = min(target_w / w, target_h / h)\n    new_w = max(1, int(round(w * scale)))\n    new_h = max(1, int(round(h * scale)))\n    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)\n    dw = target_w - new_w\n    dh = target_h - new_h\n    left = dw // 2\n    right = dw - left\n    top = dh // 2\n    bottom = dh - top\n    out = cv2.copyMakeBorder(\n        resized, top, bottom, left, right,\n        borderType=cv2.BORDER_CONSTANT, value=pad_value\n    )\n    return out, float(scale), (left, top)"
+      },
+      "grader_tests": [
+        "Output shape exactly target_hw",
+        "Aspect ratio preserved",
+        "Odd padding assigned right/bottom"
+      ]
+    },
+    {
+      "id": "AICV-03",
+      "title": "Pairwise IoU Matrix",
+      "difficulty": "easy",
+      "category": "Object detection / NumPy",
+      "problem": "Given two sets of axis-aligned boxes in xyxy format, compute their pairwise IoU matrix.\nBoxes use continuous coordinates; width=max(0,x2-x1), height=max(0,y2-y1).",
+      "requirements": [
+        "Use NumPy only.",
+        "Input shapes are (N,4) and (M,4).",
+        "Return shape (N,M).",
+        "Degenerate boxes are allowed and contribute zero area.",
+        "Division by zero must yield IoU 0."
+      ],
+      "function_signature": "box_iou(boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray",
+      "public_examples": [
+        {
+          "input": "boxes1=[[0,0,2,2]], boxes2=[[1,1,3,3],[2,2,4,4]]",
+          "expected": "[[1/7, 0]]"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Vectorize intersection and union calculation with broadcasting.",
+        "code": "import numpy as np\n\ndef box_iou(boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:\n    a = np.asarray(boxes1, dtype=np.float64)\n    b = np.asarray(boxes2, dtype=np.float64)\n    if a.ndim != 2 or b.ndim != 2 or a.shape[1] != 4 or b.shape[1] != 4:\n        raise ValueError(\"boxes must have shape (N,4) and (M,4)\")\n    lt = np.maximum(a[:, None, :2], b[None, :, :2])\n    rb = np.minimum(a[:, None, 2:], b[None, :, 2:])\n    wh = np.clip(rb - lt, 0.0, None)\n    inter = wh[..., 0] * wh[..., 1]\n    area_a = np.clip(a[:, 2] - a[:, 0], 0.0, None) * np.clip(a[:, 3] - a[:, 1], 0.0, None)\n    area_b = np.clip(b[:, 2] - b[:, 0], 0.0, None) * np.clip(b[:, 3] - b[:, 1], 0.0, None)\n    union = area_a[:, None] + area_b[None, :] - inter\n    return np.divide(inter, union, out=np.zeros_like(inter), where=union > 0)"
+      },
+      "grader_tests": [
+        "Exact IoU on overlapping boxes",
+        "Zero for disjoint/degenerate boxes",
+        "Correct matrix shape"
+      ]
+    },
+    {
+      "id": "AICV-04",
+      "title": "Non-Maximum Suppression from Scratch",
+      "difficulty": "medium",
+      "category": "Object detection / NumPy",
+      "problem": "Implement class-agnostic Non-Maximum Suppression for xyxy boxes.\nProcess candidates by descending score and suppress a remaining box when IoU > threshold.",
+      "requirements": [
+        "Use NumPy only; do not call torchvision or OpenCV NMS.",
+        "Return original indices of kept boxes.",
+        "Break equal-score ties by the smaller original index first.",
+        "Suppress only when IoU is strictly greater than iou_threshold."
+      ],
+      "function_signature": "nms(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float) -> list[int]",
+      "public_examples": [
+        {
+          "input": "boxes=[[0,0,10,10],[1,1,9,9],[20,20,30,30]], scores=[0.9,0.8,0.7], threshold=0.5",
+          "expected": "[0,2]"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Use lexsort for deterministic score/index ordering and iteratively suppress overlaps.",
+        "code": "import numpy as np\n\ndef nms(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float) -> list[int]:\n    boxes = np.asarray(boxes, dtype=np.float64)\n    scores = np.asarray(scores, dtype=np.float64)\n    if boxes.ndim != 2 or boxes.shape[1] != 4 or scores.shape != (len(boxes),):\n        raise ValueError(\"invalid shapes\")\n    order = np.lexsort((np.arange(len(scores)), -scores))\n    keep = []\n    while order.size:\n        i = int(order[0])\n        keep.append(i)\n        rest = order[1:]\n        if rest.size == 0:\n            break\n        lt = np.maximum(boxes[i, :2], boxes[rest, :2])\n        rb = np.minimum(boxes[i, 2:], boxes[rest, 2:])\n        wh = np.clip(rb - lt, 0.0, None)\n        inter = wh[:, 0] * wh[:, 1]\n        area_i = max(0.0, boxes[i, 2] - boxes[i, 0]) * max(0.0, boxes[i, 3] - boxes[i, 1])\n        area_r = (\n            np.clip(boxes[rest, 2] - boxes[rest, 0], 0.0, None)\n            * np.clip(boxes[rest, 3] - boxes[rest, 1], 0.0, None)\n        )\n        union = area_i + area_r - inter\n        iou = np.divide(inter, union, out=np.zeros_like(inter), where=union > 0)\n        order = rest[iou <= iou_threshold]\n    return keep"
+      },
+      "grader_tests": [
+        "Deterministic tie behavior",
+        "Strict > threshold suppression",
+        "Returns original indices"
+      ]
+    },
+    {
+      "id": "AICV-05",
+      "title": "Binary Segmentation Metrics",
+      "difficulty": "easy",
+      "category": "Segmentation / metrics",
+      "problem": "Compute precision, recall, Dice, and IoU for binary masks where foreground is value 1.\nPixels equal to ignore_index in target must be excluded.",
+      "requirements": [
+        "Use NumPy only.",
+        "pred and target must have identical shapes.",
+        "Treat pred==1 and target==1 as foreground.",
+        "If a metric denominator is zero, return 1.0 for that metric.",
+        "Return a dict with tp, fp, fn, precision, recall, dice, iou."
+      ],
+      "function_signature": "binary_segmentation_metrics(pred, target, ignore_index=255) -> dict",
+      "public_examples": [
+        {
+          "input": "pred=[1,1,0,0], target=[1,0,1,255]",
+          "expected": "tp=1, fp=1, fn=1, precision=0.5, recall=0.5, dice=0.5, iou=1/3"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Mask ignored pixels first, then count TP/FP/FN and apply the requested zero-denominator convention.",
+        "code": "import numpy as np\n\ndef binary_segmentation_metrics(pred, target, ignore_index=255) -> dict:\n    pred = np.asarray(pred)\n    target = np.asarray(target)\n    if pred.shape != target.shape:\n        raise ValueError(\"pred and target must have identical shapes\")\n    valid = target != ignore_index\n    p = pred[valid] == 1\n    t = target[valid] == 1\n    tp = int(np.sum(p & t))\n    fp = int(np.sum(p & ~t))\n    fn = int(np.sum(~p & t))\n\n    def safe(num, den):\n        return 1.0 if den == 0 else float(num / den)\n\n    precision = safe(tp, tp + fp)\n    recall = safe(tp, tp + fn)\n    dice = safe(2 * tp, 2 * tp + fp + fn)\n    iou = safe(tp, tp + fp + fn)\n    return {\n        \"tp\": tp, \"fp\": fp, \"fn\": fn,\n        \"precision\": precision, \"recall\": recall,\n        \"dice\": dice, \"iou\": iou\n    }"
+      },
+      "grader_tests": [
+        "Ignore mask handled before counts",
+        "Zero-denominator rule respected",
+        "Counts are Python ints"
+      ]
+    },
+    {
+      "id": "AICV-06",
+      "title": "Largest Connected Component",
+      "difficulty": "easy",
+      "category": "OpenCV / segmentation",
+      "problem": "Return a binary uint8 mask containing only the largest non-zero connected component.",
+      "requirements": [
+        "Use cv2.connectedComponentsWithStats.",
+        "Support connectivity 4 or 8.",
+        "Input may contain any non-zero foreground values.",
+        "If no foreground exists, return an all-zero uint8 mask.",
+        "On equal component area, keep the smaller component label."
+      ],
+      "function_signature": "largest_component(mask: np.ndarray, connectivity=8) -> np.ndarray",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Convert to 0/1, compute component statistics, then select the first maximum-area foreground label.",
+        "code": "import cv2\nimport numpy as np\n\ndef largest_component(mask: np.ndarray, connectivity=8) -> np.ndarray:\n    if connectivity not in (4, 8):\n        raise ValueError(\"connectivity must be 4 or 8\")\n    binary = (np.asarray(mask) != 0).astype(np.uint8)\n    n, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)\n    if n <= 1:\n        return np.zeros_like(binary, dtype=np.uint8)\n    areas = stats[1:, cv2.CC_STAT_AREA]\n    label = 1 + int(np.argmax(areas))\n    return (labels == label).astype(np.uint8)"
+      },
+      "grader_tests": [
+        "Keeps only largest foreground component",
+        "Correct empty-mask behavior",
+        "Returns uint8 0/1"
+      ]
+    },
+    {
+      "id": "AICV-07",
+      "title": "Morphological Mask Cleanup",
+      "difficulty": "easy",
+      "category": "OpenCV / morphology",
+      "problem": "Clean a binary mask using one morphological opening followed by one morphological closing.",
+      "requirements": [
+        "Use an elliptical OpenCV structuring element.",
+        "kernel_size must be a positive odd integer.",
+        "Treat any non-zero input pixel as foreground.",
+        "Return uint8 values in {0,1}."
+      ],
+      "function_signature": "clean_mask(mask: np.ndarray, kernel_size=3) -> np.ndarray",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Binarize, create an elliptical kernel, apply MORPH_OPEN and then MORPH_CLOSE.",
+        "code": "import cv2\nimport numpy as np\n\ndef clean_mask(mask: np.ndarray, kernel_size=3) -> np.ndarray:\n    if kernel_size <= 0 or kernel_size % 2 == 0:\n        raise ValueError(\"kernel_size must be a positive odd integer\")\n    binary = (np.asarray(mask) != 0).astype(np.uint8)\n    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))\n    opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=1)\n    closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=1)\n    return (closed != 0).astype(np.uint8)"
+      },
+      "grader_tests": [
+        "Operation order is opening then closing",
+        "Elliptical kernel used",
+        "Output is binary uint8"
+      ]
+    },
+    {
+      "id": "AICV-08",
+      "title": "Sobel Magnitude and Orientation",
+      "difficulty": "medium",
+      "category": "OpenCV / edges",
+      "problem": "For a grayscale image, compute Sobel dx/dy, gradient magnitude, and unsigned orientation.\nOrientation must be in degrees in [0,180).",
+      "requirements": [
+        "Use cv2.Sobel with CV_32F and ksize=3.",
+        "Return magnitude and angle as float32.",
+        "Angle for zero-magnitude pixels must be exactly 0."
+      ],
+      "function_signature": "sobel_features(gray: np.ndarray) -> tuple[np.ndarray, np.ndarray]",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Use hypot for magnitude and atan2 for direction, wrap angle modulo 180, then zero undefined angles.",
+        "code": "import cv2\nimport numpy as np\n\ndef sobel_features(gray: np.ndarray):\n    gray = np.asarray(gray)\n    if gray.ndim != 2:\n        raise ValueError(\"gray must be 2D\")\n    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)\n    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)\n    mag = np.hypot(gx, gy).astype(np.float32)\n    angle = (np.degrees(np.arctan2(gy, gx)) % 180.0).astype(np.float32)\n    angle[mag == 0] = 0.0\n    return mag, angle"
+      },
+      "grader_tests": [
+        "Magnitude equals hypot(gx,gy)",
+        "Angle range [0,180)",
+        "Zero magnitude -> angle 0"
+      ]
+    },
+    {
+      "id": "AICV-09",
+      "title": "Perspective Rectification from Four Points",
+      "difficulty": "medium",
+      "category": "Geometry / OpenCV",
+      "problem": "Given four unordered source points marking a planar quadrilateral, order them as\ntop-left, top-right, bottom-right, bottom-left and warp that quadrilateral to a rectangle.",
+      "requirements": [
+        "Use OpenCV perspective transform.",
+        "Point ordering: TL has smallest x+y, BR largest x+y; TR smallest y-x, BL largest y-x.",
+        "Output width is rounded max(top edge length, bottom edge length).",
+        "Output height is rounded max(left edge length, right edge length).",
+        "Minimum output dimension is 1."
+      ],
+      "function_signature": "warp_quad(image: np.ndarray, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Order points by sum/difference, compute target dimensions from Euclidean edge lengths,\nbuild destination corners, and warpPerspective.",
+        "code": "import cv2\nimport numpy as np\n\ndef warp_quad(image: np.ndarray, points: np.ndarray):\n    pts = np.asarray(points, dtype=np.float32)\n    if pts.shape != (4, 2):\n        raise ValueError(\"points must have shape (4,2)\")\n    s = pts.sum(axis=1)\n    d = pts[:, 1] - pts[:, 0]\n    ordered = np.array([\n        pts[np.argmin(s)],\n        pts[np.argmin(d)],\n        pts[np.argmax(s)],\n        pts[np.argmax(d)],\n    ], dtype=np.float32)\n    tl, tr, br, bl = ordered\n    width = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))\n    height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))\n    w = max(1, int(round(width)))\n    h = max(1, int(round(height)))\n    dst = np.array([[0,0],[w-1,0],[w-1,h-1],[0,h-1]], dtype=np.float32)\n    H = cv2.getPerspectiveTransform(ordered, dst)\n    warped = cv2.warpPerspective(image, H, (w, h))\n    return warped, ordered"
+      },
+      "grader_tests": [
+        "Correct point ordering",
+        "Correct output size rule",
+        "Returns ordered source points"
+      ]
+    },
+    {
+      "id": "AICV-10",
+      "title": "Bilinear Sampling",
+      "difficulty": "medium",
+      "category": "Image interpolation / NumPy",
+      "problem": "Sample a 2D grayscale image at floating-point coordinates using bilinear interpolation.\nCoordinates are provided as arrays x and y with matching shapes.",
+      "requirements": [
+        "Use NumPy only.",
+        "Clamp coordinates to image bounds before interpolation.",
+        "Return float64 with the same shape as x/y.",
+        "At integer coordinates return the exact source pixel."
+      ],
+      "function_signature": "bilinear_sample(image: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray",
+      "public_examples": [
+        {
+          "input": "image=[[0,10],[20,30]], x=[0.5], y=[0.5]",
+          "expected": "[15.0]"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Clamp coordinates, obtain four neighbors, and combine them with separable linear weights.",
+        "code": "import numpy as np\n\ndef bilinear_sample(image: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:\n    img = np.asarray(image, dtype=np.float64)\n    x = np.asarray(x, dtype=np.float64)\n    y = np.asarray(y, dtype=np.float64)\n    if img.ndim != 2 or x.shape != y.shape:\n        raise ValueError(\"invalid input shapes\")\n    h, w = img.shape\n    xc = np.clip(x, 0, w - 1)\n    yc = np.clip(y, 0, h - 1)\n    x0 = np.floor(xc).astype(int)\n    y0 = np.floor(yc).astype(int)\n    x1 = np.minimum(x0 + 1, w - 1)\n    y1 = np.minimum(y0 + 1, h - 1)\n    wx = xc - x0\n    wy = yc - y0\n    a = img[y0, x0]\n    b = img[y0, x1]\n    c = img[y1, x0]\n    d = img[y1, x1]\n    return (\n        a * (1 - wx) * (1 - wy)\n        + b * wx * (1 - wy)\n        + c * (1 - wx) * wy\n        + d * wx * wy\n    )"
+      },
+      "grader_tests": [
+        "Boundary clamping",
+        "Correct 4-neighbor interpolation",
+        "Integer coordinates exact"
+      ]
+    },
+    {
+      "id": "AICV-11",
+      "title": "Depth Map Back-projection",
+      "difficulty": "medium",
+      "category": "3D vision / depth",
+      "problem": "Back-project a depth map into an Nx3 point cloud using pinhole intrinsics.\nDepth values are converted to meters by dividing by depth_scale.",
+      "requirements": [
+        "Valid depth is finite and >0.",
+        "Optional mask further restricts valid pixels.",
+        "Pixel coordinate convention: u=column, v=row.",
+        "X=(u-cx)*Z/fx and Y=(v-cy)*Z/fy.",
+        "Return points in row-major pixel order as float64."
+      ],
+      "function_signature": "backproject_depth(depth, fx, fy, cx, cy, depth_scale=1000.0, mask=None) -> np.ndarray",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Build u/v grids, select valid pixels, convert Z, then apply the pinhole inverse projection.",
+        "code": "import numpy as np\n\ndef backproject_depth(depth, fx, fy, cx, cy, depth_scale=1000.0, mask=None) -> np.ndarray:\n    depth = np.asarray(depth, dtype=np.float64)\n    if depth.ndim != 2 or fx <= 0 or fy <= 0 or depth_scale <= 0:\n        raise ValueError(\"invalid inputs\")\n    valid = np.isfinite(depth) & (depth > 0)\n    if mask is not None:\n        m = np.asarray(mask, dtype=bool)\n        if m.shape != depth.shape:\n            raise ValueError(\"mask shape mismatch\")\n        valid &= m\n    v, u = np.indices(depth.shape)\n    z = depth[valid] / depth_scale\n    x = (u[valid] - cx) * z / fx\n    y = (v[valid] - cy) * z / fy\n    return np.column_stack((x, y, z)).astype(np.float64, copy=False)"
+      },
+      "grader_tests": [
+        "Correct u/v convention",
+        "Filters invalid depths",
+        "Returns row-major valid points"
+      ]
+    },
+    {
+      "id": "AICV-12",
+      "title": "Stereo Disparity to Metric Depth",
+      "difficulty": "easy",
+      "category": "Stereo vision",
+      "problem": "Convert a disparity map in pixels to depth in meters using Z = focal_px * baseline_m / disparity.",
+      "requirements": [
+        "Use NumPy only.",
+        "Valid disparity is finite and strictly positive.",
+        "Invalid pixels must have depth 0.",
+        "Return float32."
+      ],
+      "function_signature": "disparity_to_depth(disparity, focal_px: float, baseline_m: float) -> np.ndarray",
+      "public_examples": [
+        {
+          "input": "disparity=[10,20,0], focal_px=1000, baseline_m=0.1",
+          "expected": "[10.0,5.0,0.0]"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Apply the stereo equation only at valid disparities.",
+        "code": "import numpy as np\n\ndef disparity_to_depth(disparity, focal_px: float, baseline_m: float) -> np.ndarray:\n    if focal_px <= 0 or baseline_m <= 0:\n        raise ValueError(\"focal_px and baseline_m must be positive\")\n    d = np.asarray(disparity, dtype=np.float32)\n    out = np.zeros_like(d, dtype=np.float32)\n    valid = np.isfinite(d) & (d > 0)\n    out[valid] = (focal_px * baseline_m) / d[valid]\n    return out"
+      },
+      "grader_tests": [
+        "Correct stereo formula",
+        "Invalid disparity -> 0",
+        "float32 output"
+      ]
+    },
+    {
+      "id": "AICV-13",
+      "title": "Best-fit 3D Plane by SVD",
+      "difficulty": "medium",
+      "category": "3D vision / geometry",
+      "problem": "Fit a plane ax+by+cz+d=0 to Nx3 points by total least squares.\nNormalize [a,b,c] to unit length and make the sign deterministic.",
+      "requirements": [
+        "Use NumPy only.",
+        "Require at least 3 finite points.",
+        "Reject point sets whose centered matrix has rank < 2.",
+        "The normal is the right-singular vector with smallest singular value after centering.",
+        "Sign rule: make the first normal component whose absolute value exceeds 1e-12 positive.",
+        "Return np.ndarray [a,b,c,d] as float64."
+      ],
+      "function_signature": "fit_plane_svd(points: np.ndarray) -> np.ndarray",
+      "public_examples": [
+        {
+          "input": "points sampled exactly from z=2",
+          "expected": "plane is equivalent to [0,0,1,-2] under the sign rule"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Center the points, use SVD to get the least-variance direction, normalize it,\napply the deterministic sign rule, then compute d=-n dot centroid.",
+        "code": "import numpy as np\n\ndef fit_plane_svd(points: np.ndarray) -> np.ndarray:\n    pts = np.asarray(points, dtype=np.float64)\n    if pts.ndim != 2 or pts.shape[1] != 3 or len(pts) < 3 or not np.all(np.isfinite(pts)):\n        raise ValueError(\"need at least 3 finite 3D points\")\n    centroid = pts.mean(axis=0)\n    centered = pts - centroid\n    if np.linalg.matrix_rank(centered) < 2:\n        raise ValueError(\"point set does not define a unique plane\")\n    _, _, vh = np.linalg.svd(centered, full_matrices=False)\n    n = vh[-1]\n    n = n / np.linalg.norm(n)\n    for value in n:\n        if abs(value) > 1e-12:\n            if value < 0:\n                n = -n\n            break\n    d = -float(np.dot(n, centroid))\n    return np.array([n[0], n[1], n[2], d], dtype=np.float64)\n"
+      },
+      "grader_tests": [
+        "Unit normal",
+        "Deterministic sign",
+        "Plane fits exact planar points"
+      ]
+    },
+    {
+      "id": "AICV-14",
+      "title": "3D Point Projection into a Camera",
+      "difficulty": "medium",
+      "category": "Camera geometry",
+      "problem": "Transform world points with X_cam = R @ X_world + t, then project them using K.\nReturn image coordinates and camera-space depth.",
+      "requirements": [
+        "Use NumPy only.",
+        "points shape (N,3), R shape (3,3), t shape (3,), K shape (3,3).",
+        "Points with depth <=0 must receive image coordinates [nan,nan].",
+        "Return (uv, depth), where uv is (N,2)."
+      ],
+      "function_signature": "project_points(points, K, R, t) -> tuple[np.ndarray, np.ndarray]",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Transform all points, multiply by K, divide x/y homogeneous coordinates by z only for positive depths.",
+        "code": "import numpy as np\n\ndef project_points(points, K, R, t):\n    pts = np.asarray(points, dtype=np.float64)\n    K = np.asarray(K, dtype=np.float64)\n    R = np.asarray(R, dtype=np.float64)\n    t = np.asarray(t, dtype=np.float64)\n    if pts.ndim != 2 or pts.shape[1] != 3 or K.shape != (3,3) or R.shape != (3,3) or t.shape != (3,):\n        raise ValueError(\"invalid shapes\")\n    cam = (R @ pts.T).T + t\n    depth = cam[:, 2].copy()\n    uv = np.full((len(pts), 2), np.nan, dtype=np.float64)\n    valid = depth > 0\n    homog = (K @ cam[valid].T).T\n    uv[valid] = homog[:, :2] / homog[:, 2:3]\n    return uv, depth"
+      },
+      "grader_tests": [
+        "Correct world-to-camera transform",
+        "Correct pinhole projection",
+        "Behind-camera points -> NaN uv"
+      ]
+    },
+    {
+      "id": "AICV-15",
+      "title": "Bounding Box from a Binary Mask",
+      "difficulty": "easy",
+      "category": "Segmentation / geometry",
+      "problem": "Compute the tight bounding box around non-zero pixels in a 2D mask.\nUse xyxy format with exclusive x2/y2.",
+      "requirements": [
+        "Use NumPy only.",
+        "Return None if there is no foreground.",
+        "Otherwise return a tuple of Python ints (x1,y1,x2,y2)."
+      ],
+      "function_signature": "bbox_from_mask(mask: np.ndarray)",
+      "public_examples": [
+        {
+          "input": "foreground pixels at (y,x)=(2,3),(4,7)",
+          "expected": "(3,2,8,5)"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Find foreground row/column indices and use min/max+1 for exclusive upper bounds.",
+        "code": "import numpy as np\n\ndef bbox_from_mask(mask: np.ndarray):\n    m = np.asarray(mask)\n    if m.ndim != 2:\n        raise ValueError(\"mask must be 2D\")\n    ys, xs = np.nonzero(m)\n    if len(xs) == 0:\n        return None\n    return (int(xs.min()), int(ys.min()), int(xs.max() + 1), int(ys.max() + 1))"
+      },
+      "grader_tests": [
+        "Exclusive max coordinates",
+        "None on empty mask",
+        "Python int tuple"
+      ]
+    },
+    {
+      "id": "AICV-16",
+      "title": "Shape-preserving Conv-BN-ReLU Block",
+      "difficulty": "easy",
+      "category": "PyTorch / CNN",
+      "problem": "Implement a reusable PyTorch module ConvBNReLU whose output has the same HxW as its input\nfor any odd kernel_size and stride=1.",
+      "requirements": [
+        "Use nn.Conv2d -> nn.BatchNorm2d -> nn.ReLU(inplace=True).",
+        "Conv bias must be False.",
+        "kernel_size must be a positive odd integer.",
+        "padding = kernel_size // 2."
+      ],
+      "function_signature": "ConvBNReLU(in_channels, out_channels, kernel_size=3): nn.Module",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "For stride 1 and odd kernels, symmetric padding of kernel_size//2 preserves H and W.",
+        "code": "import torch\nfrom torch import nn\n\nclass ConvBNReLU(nn.Module):\n    def __init__(self, in_channels, out_channels, kernel_size=3):\n        super().__init__()\n        if kernel_size <= 0 or kernel_size % 2 == 0:\n            raise ValueError(\"kernel_size must be a positive odd integer\")\n        self.block = nn.Sequential(\n            nn.Conv2d(\n                in_channels, out_channels,\n                kernel_size=kernel_size,\n                stride=1,\n                padding=kernel_size // 2,\n                bias=False\n            ),\n            nn.BatchNorm2d(out_channels),\n            nn.ReLU(inplace=True),\n        )\n\n    def forward(self, x):\n        return self.block(x)"
+      },
+      "grader_tests": [
+        "Output spatial size preserved",
+        "Conv bias disabled",
+        "Layer order exact"
+      ]
+    },
+    {
+      "id": "AICV-17",
+      "title": "Binary Focal Loss with Logits",
+      "difficulty": "medium",
+      "category": "PyTorch / loss functions",
+      "problem": "Implement numerically stable binary focal loss directly from logits.\nTargets are 0/1 values with the same shape as logits.",
+      "requirements": [
+        "Use torch.nn.functional.binary_cross_entropy_with_logits with reduction='none'.",
+        "pt = p for positive targets and 1-p for negative targets.",
+        "alpha_t = alpha for positive targets and 1-alpha for negative targets.",
+        "Support reduction='none', 'mean', and 'sum'."
+      ],
+      "function_signature": "binary_focal_loss_with_logits(logits, targets, alpha=0.25, gamma=2.0, reduction='mean')",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Use BCE-with-logits for stability, sigmoid only to compute pt, then apply alpha and focal modulation.",
+        "code": "import torch\nimport torch.nn.functional as F\n\ndef binary_focal_loss_with_logits(\n    logits, targets, alpha=0.25, gamma=2.0, reduction=\"mean\"\n):\n    if logits.shape != targets.shape:\n        raise ValueError(\"shape mismatch\")\n    if reduction not in (\"none\", \"mean\", \"sum\"):\n        raise ValueError(\"invalid reduction\")\n    targets = targets.to(dtype=logits.dtype)\n    bce = F.binary_cross_entropy_with_logits(logits, targets, reduction=\"none\")\n    p = torch.sigmoid(logits)\n    pt = torch.where(targets == 1, p, 1 - p)\n    alpha_t = torch.where(\n        targets == 1,\n        torch.as_tensor(alpha, dtype=logits.dtype, device=logits.device),\n        torch.as_tensor(1 - alpha, dtype=logits.dtype, device=logits.device),\n    )\n    loss = alpha_t * (1 - pt).pow(gamma) * bce\n    if reduction == \"mean\":\n        return loss.mean()\n    if reduction == \"sum\":\n        return loss.sum()\n    return loss"
+      },
+      "grader_tests": [
+        "Numerically stable BCE path",
+        "Correct alpha_t and pt",
+        "All reductions supported"
+      ]
+    },
+    {
+      "id": "AICV-18",
+      "title": "Masked Scaled Dot-product Attention",
+      "difficulty": "medium",
+      "category": "PyTorch / transformers",
+      "problem": "Implement scaled dot-product attention for q,k,v shaped [B,H,N,D].\nA boolean mask is broadcastable to [B,H,N,N]; True means attention is allowed.",
+      "requirements": [
+        "Use scale 1/sqrt(D).",
+        "Disallowed logits must be filled with negative infinity.",
+        "Assume every query has at least one allowed key.",
+        "Return (output, attention_weights)."
+      ],
+      "function_signature": "scaled_dot_product_attention(q, k, v, mask=None)",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Compute QK^T / sqrt(D), apply the boolean allow-mask, softmax over keys, then multiply by V.",
+        "code": "import math\nimport torch\n\ndef scaled_dot_product_attention(q, k, v, mask=None):\n    if q.ndim != 4 or k.ndim != 4 or v.ndim != 4:\n        raise ValueError(\"q, k, v must be 4D\")\n    if q.shape[-1] != k.shape[-1] or k.shape[-2] != v.shape[-2]:\n        raise ValueError(\"incompatible shapes\")\n    scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.shape[-1])\n    if mask is not None:\n        mask = mask.to(device=scores.device, dtype=torch.bool)\n        scores = scores.masked_fill(~mask, float(\"-inf\"))\n    weights = torch.softmax(scores, dim=-1)\n    out = torch.matmul(weights, v)\n    return out, weights"
+      },
+      "grader_tests": [
+        "Correct scaling",
+        "Mask semantics True=allowed",
+        "Softmax over key dimension"
+      ]
+    },
+    {
+      "id": "AICV-19",
+      "title": "Top-k Cosine Retrieval",
+      "difficulty": "medium",
+      "category": "Embeddings / NumPy",
+      "problem": "Given one query vector and a database of embedding vectors, return the top-k database rows by cosine similarity.",
+      "requirements": [
+        "Use NumPy only.",
+        "Reject zero-norm query vectors.",
+        "Database zero vectors get similarity -inf.",
+        "Sort by descending similarity; ties go to smaller row index.",
+        "Return (indices, similarities)."
+      ],
+      "function_signature": "topk_cosine(query: np.ndarray, database: np.ndarray, k: int)",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Normalize through dot/(norm products), mark zero database vectors invalid, then use lexsort for deterministic ranking.",
+        "code": "import numpy as np\n\ndef topk_cosine(query: np.ndarray, database: np.ndarray, k: int):\n    q = np.asarray(query, dtype=np.float64)\n    db = np.asarray(database, dtype=np.float64)\n    if q.ndim != 1 or db.ndim != 2 or db.shape[1] != q.shape[0]:\n        raise ValueError(\"invalid shapes\")\n    if k < 1 or k > len(db):\n        raise ValueError(\"invalid k\")\n    qn = np.linalg.norm(q)\n    if qn == 0:\n        raise ValueError(\"query must be non-zero\")\n    dn = np.linalg.norm(db, axis=1)\n    sims = np.full(len(db), -np.inf, dtype=np.float64)\n    valid = dn > 0\n    sims[valid] = (db[valid] @ q) / (dn[valid] * qn)\n    order = np.lexsort((np.arange(len(db)), -sims))\n    idx = order[:k]\n    return idx, sims[idx]"
+      },
+      "grader_tests": [
+        "Correct cosine values",
+        "Zero DB vectors -> -inf",
+        "Stable index tie-break"
+      ]
+    },
+    {
+      "id": "AICV-20",
+      "title": "Batch-hard Triplet Loss",
+      "difficulty": "hard",
+      "category": "PyTorch / metric learning",
+      "problem": "Implement batch-hard triplet loss from embeddings [N,D] and integer labels [N].\nFor each valid anchor, select the farthest positive excluding itself and the nearest negative.",
+      "requirements": [
+        "Use Euclidean distance with torch.cdist.",
+        "Skip anchors without at least one positive and one negative.",
+        "Per-anchor loss = relu(hardest_positive - hardest_negative + margin).",
+        "If no anchor is valid, return embeddings.sum()*0 so gradients remain connected.",
+        "Return the mean over valid anchors."
+      ],
+      "function_signature": "batch_hard_triplet_loss(embeddings, labels, margin=0.2)",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Construct positive/negative masks, gather hardest distances per valid anchor, and average the margin ranking loss.",
+        "code": "import torch\nimport torch.nn.functional as F\n\ndef batch_hard_triplet_loss(embeddings, labels, margin=0.2):\n    if embeddings.ndim != 2 or labels.ndim != 1 or len(embeddings) != len(labels):\n        raise ValueError(\"invalid shapes\")\n    labels = labels.to(device=embeddings.device)\n    n = len(labels)\n    dist = torch.cdist(embeddings, embeddings, p=2)\n    same = labels[:, None].eq(labels[None, :])\n    eye = torch.eye(n, dtype=torch.bool, device=embeddings.device)\n    pos_mask = same & ~eye\n    neg_mask = ~same\n\n    losses = []\n    for i in range(n):\n        if pos_mask[i].any() and neg_mask[i].any():\n            hardest_pos = dist[i][pos_mask[i]].max()\n            hardest_neg = dist[i][neg_mask[i]].min()\n            losses.append(F.relu(hardest_pos - hardest_neg + margin))\n    if not losses:\n        return embeddings.sum() * 0.0\n    return torch.stack(losses).mean()\n"
+      },
+      "grader_tests": [
+        "Self excluded from positives",
+        "Correct hardest positive/negative",
+        "Gradient-connected zero case"
+      ]
+    },
+    {
+      "id": "AICV-21",
+      "title": "Fast Multiclass Confusion Matrix",
+      "difficulty": "medium",
+      "category": "Metrics / NumPy",
+      "problem": "Compute a num_classes x num_classes confusion matrix where rows are true classes and columns are predicted classes.",
+      "requirements": [
+        "Use NumPy and np.bincount; do not loop over samples.",
+        "Optionally ignore y_true == ignore_index.",
+        "All remaining labels must be in [0,num_classes).",
+        "Return int64."
+      ],
+      "function_signature": "confusion_matrix(y_true, y_pred, num_classes: int, ignore_index=None) -> np.ndarray",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Flatten, filter ignored targets, encode each pair as true*num_classes+pred, and bincount.",
+        "code": "import numpy as np\n\ndef confusion_matrix(y_true, y_pred, num_classes: int, ignore_index=None) -> np.ndarray:\n    yt = np.asarray(y_true).reshape(-1)\n    yp = np.asarray(y_pred).reshape(-1)\n    if yt.shape != yp.shape or num_classes <= 0:\n        raise ValueError(\"invalid inputs\")\n    if ignore_index is not None:\n        keep = yt != ignore_index\n        yt, yp = yt[keep], yp[keep]\n    if np.any((yt < 0) | (yt >= num_classes) | (yp < 0) | (yp >= num_classes)):\n        raise ValueError(\"class id out of range\")\n    encoded = yt.astype(np.int64) * num_classes + yp.astype(np.int64)\n    counts = np.bincount(encoded, minlength=num_classes * num_classes)\n    return counts.reshape(num_classes, num_classes).astype(np.int64, copy=False)"
+      },
+      "grader_tests": [
+        "Rows=true, columns=pred",
+        "Vectorized bincount",
+        "Ignore index filtering"
+      ]
+    },
+    {
+      "id": "AICV-22",
+      "title": "Exponential Moving Average Model Update",
+      "difficulty": "medium",
+      "category": "PyTorch / training",
+      "problem": "Update an EMA model in-place from a source model.\nEMA parameters use ema = decay*ema + (1-decay)*source.\nBuffers must be copied exactly from the source model.",
+      "requirements": [
+        "Use torch.no_grad().",
+        "Parameter names and buffer names must match.",
+        "Do not build an autograd graph.",
+        "Return None."
+      ],
+      "function_signature": "update_ema(ema_model, model, decay: float) -> None",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Index named parameters/buffers and update parameters in-place while copying buffers.",
+        "code": "import torch\n\n@torch.no_grad()\ndef update_ema(ema_model, model, decay: float) -> None:\n    if not (0.0 <= decay <= 1.0):\n        raise ValueError(\"decay must be in [0,1]\")\n    src_params = dict(model.named_parameters())\n    ema_params = dict(ema_model.named_parameters())\n    if src_params.keys() != ema_params.keys():\n        raise ValueError(\"parameter names do not match\")\n    for name, ema_p in ema_params.items():\n        ema_p.mul_(decay).add_(src_params[name].detach(), alpha=1.0 - decay)\n\n    src_buffers = dict(model.named_buffers())\n    ema_buffers = dict(ema_model.named_buffers())\n    if src_buffers.keys() != ema_buffers.keys():\n        raise ValueError(\"buffer names do not match\")\n    for name, ema_b in ema_buffers.items():\n        ema_b.copy_(src_buffers[name].detach())"
+      },
+      "grader_tests": [
+        "EMA equation exact",
+        "Buffers copied",
+        "No autograd graph"
+      ]
+    },
+    {
+      "id": "AICV-23",
+      "title": "Correct Gradient Accumulation",
+      "difficulty": "hard",
+      "category": "PyTorch / training loop",
+      "problem": "Implement one training epoch with gradient accumulation.\nThe optimizer must step after every accum_steps mini-batches and once more for a final partial group.",
+      "requirements": [
+        "Call optimizer.zero_grad(set_to_none=True) before the loop.",
+        "For each full accumulation group, optimize the mean mini-batch loss over that group.",
+        "For a final partial group, optimize the mean over only the mini-batches actually present.",
+        "Inputs and targets are moved to device.",
+        "criterion(model(inputs), targets) returns a scalar loss.",
+        "Return mean of the unscaled per-batch losses as float.",
+        "An empty loader must return 0.0."
+      ],
+      "function_signature": "train_one_epoch_accum(model, loader, optimizer, criterion, device, accum_steps=1) -> float",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Backpropagate loss/accum_steps for normal groups. If the last group is partial, rescale the accumulated gradients by accum_steps/pending before stepping so that the final update equals the mean loss of that partial group.",
+        "code": "def train_one_epoch_accum(model, loader, optimizer, criterion, device, accum_steps=1) -> float:\n    if accum_steps < 1:\n        raise ValueError(\"accum_steps must be >=1\")\n    model.train()\n    optimizer.zero_grad(set_to_none=True)\n    total_loss = 0.0\n    num_batches = 0\n    pending = 0\n\n    for inputs, targets in loader:\n        inputs = inputs.to(device)\n        targets = targets.to(device)\n        loss = criterion(model(inputs), targets)\n        total_loss += float(loss.detach().item())\n        num_batches += 1\n        pending += 1\n\n        (loss / accum_steps).backward()\n\n        if pending == accum_steps:\n            optimizer.step()\n            optimizer.zero_grad(set_to_none=True)\n            pending = 0\n\n    if pending:\n        correction = accum_steps / pending\n        for group in optimizer.param_groups:\n            for p in group[\"params\"]:\n                if p.grad is not None:\n                    p.grad.mul_(correction)\n        optimizer.step()\n        optimizer.zero_grad(set_to_none=True)\n\n    return 0.0 if num_batches == 0 else total_loss / num_batches\n"
+      },
+      "grader_tests": [
+        "Steps on full groups and leftover",
+        "Backward uses scaled loss",
+        "Reported loss is unscaled mean"
+      ]
+    },
+    {
+      "id": "AICV-24",
+      "title": "Early Stopping State Machine",
+      "difficulty": "medium",
+      "category": "Training utilities",
+      "problem": "Implement EarlyStopping for minimizing a validation metric.\nAn improvement occurs only when metric < best - min_delta.\nStop after patience consecutive non-improving calls.",
+      "requirements": [
+        "patience must be >=1 and min_delta >=0.",
+        "First finite metric always establishes best and is an improvement.",
+        "Non-finite metrics count as non-improvements.",
+        "step(metric) returns True only when training should stop.",
+        "Expose best and bad_epochs attributes."
+      ],
+      "function_signature": "EarlyStopping(patience=5, min_delta=0.0)",
+      "public_examples": [
+        {
+          "input": "patience=2, min_delta=0.1, metrics=[1.0,0.95,0.89,0.90,0.91]",
+          "expected": "stop flags=[False,False,False,False,True]"
+        }
+      ],
+      "reference_answer": {
+        "explanation": "Maintain best and the count of consecutive failed improvements; finite strict improvement resets the counter.",
+        "code": "import math\n\nclass EarlyStopping:\n    def __init__(self, patience=5, min_delta=0.0):\n        if patience < 1 or min_delta < 0:\n            raise ValueError(\"invalid patience/min_delta\")\n        self.patience = int(patience)\n        self.min_delta = float(min_delta)\n        self.best = None\n        self.bad_epochs = 0\n\n    def step(self, metric) -> bool:\n        value = float(metric)\n        improved = (\n            math.isfinite(value)\n            and (self.best is None or value < self.best - self.min_delta)\n        )\n        if improved:\n            self.best = value\n            self.bad_epochs = 0\n            return False\n        self.bad_epochs += 1\n        return self.bad_epochs >= self.patience"
+      },
+      "grader_tests": [
+        "Strict min_delta logic",
+        "Non-finite counts bad",
+        "Consecutive bad epochs reset after improvement"
+      ]
+    },
+    {
+      "id": "AICV-25",
+      "title": "Selective Parameter Freezing",
+      "difficulty": "easy",
+      "category": "PyTorch / fine-tuning",
+      "problem": "Freeze all model parameters except those whose full parameter names start with one of the requested prefixes.\nReturn the number of trainable scalar parameters.",
+      "requirements": [
+        "Set requires_grad for every parameter.",
+        "Prefix matching uses str.startswith.",
+        "An empty prefix list freezes everything.",
+        "Return sum(p.numel()) over trainable parameters."
+      ],
+      "function_signature": "freeze_for_finetuning(model, trainable_prefixes) -> int",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Walk named_parameters once, set requires_grad based on prefix matching, and sum trainable numel.",
+        "code": "def freeze_for_finetuning(model, trainable_prefixes) -> int:\n    prefixes = tuple(trainable_prefixes)\n    trainable = 0\n    for name, param in model.named_parameters():\n        flag = any(name.startswith(prefix) for prefix in prefixes)\n        param.requires_grad_(flag)\n        if flag:\n            trainable += param.numel()\n    return int(trainable)"
+      },
+      "grader_tests": [
+        "All parameters explicitly set",
+        "startswith semantics",
+        "Correct trainable scalar count"
+      ]
+    },
+    {
+      "id": "AICV-26",
+      "title": "Overlap-averaged Sliding-window Segmentation",
+      "difficulty": "hard",
+      "category": "Segmentation / inference",
+      "problem": "Run a callable segmentation model over a large HxWxC NumPy image using overlapping square tiles.\nThe callable receives one tile and returns a tile_size x tile_size float prediction.\nAverage predictions where tiles overlap.",
+      "requirements": [
+        "tile_size >0 and 0<=overlap<tile_size.",
+        "Pad bottom/right with zeros only when image is smaller than tile_size or the final grid needs coverage.",
+        "Stride = tile_size - overlap.",
+        "Always include a final tile anchored at max(length-tile_size,0) along each axis.",
+        "Return the original HxW area only.",
+        "Raise if model output shape is wrong."
+      ],
+      "function_signature": "sliding_window_predict(image, model, tile_size: int, overlap: int) -> np.ndarray",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Generate coverage-complete start positions, pad to at least tile size, accumulate predictions and counts,\nthen divide and crop back to the original image.",
+        "code": "import numpy as np\n\ndef sliding_window_predict(image, model, tile_size: int, overlap: int) -> np.ndarray:\n    img = np.asarray(image)\n    if img.ndim != 3 or tile_size <= 0 or overlap < 0 or overlap >= tile_size:\n        raise ValueError(\"invalid inputs\")\n    h, w, c = img.shape\n    stride = tile_size - overlap\n    ph = max(h, tile_size)\n    pw = max(w, tile_size)\n    padded = np.zeros((ph, pw, c), dtype=img.dtype)\n    padded[:h, :w] = img\n\n    def starts(length):\n        if length <= tile_size:\n            return [0]\n        xs = list(range(0, length - tile_size + 1, stride))\n        last = length - tile_size\n        if xs[-1] != last:\n            xs.append(last)\n        return xs\n\n    ys = starts(ph)\n    xs = starts(pw)\n    acc = np.zeros((ph, pw), dtype=np.float64)\n    cnt = np.zeros((ph, pw), dtype=np.float64)\n\n    for y in ys:\n        for x in xs:\n            tile = padded[y:y + tile_size, x:x + tile_size]\n            pred = np.asarray(model(tile), dtype=np.float64)\n            if pred.shape != (tile_size, tile_size):\n                raise ValueError(\"model output shape mismatch\")\n            acc[y:y + tile_size, x:x + tile_size] += pred\n            cnt[y:y + tile_size, x:x + tile_size] += 1.0\n\n    out = np.divide(acc, cnt, out=np.zeros_like(acc), where=cnt > 0)\n    return out[:h, :w]"
+      },
+      "grader_tests": [
+        "Full coverage including last tile",
+        "Overlap averaged, not summed",
+        "Original size restored"
+      ]
+    },
+    {
+      "id": "AICV-27",
+      "title": "Detection AP at a Fixed IoU Threshold",
+      "difficulty": "hard",
+      "category": "Object detection / evaluation",
+      "problem": "Compute single-class interpolated Average Precision for predictions across multiple images.\nEach prediction has image_id, box(xyxy), score. Ground truth is a dict image_id -> list of boxes.\nMatch predictions greedily in descending score order to the highest-IoU unmatched GT in the same image.",
+      "requirements": [
+        "IoU match condition is >= iou_threshold.",
+        "Equal score ties preserve the original prediction list order.",
+        "Each GT can be matched at most once.",
+        "Use all-point interpolated AP: add sentinel recall/precision, make precision monotonically non-increasing from right to left, sum precision * delta recall at recall changes.",
+        "If there are zero GT boxes, return 0.0."
+      ],
+      "function_signature": "detection_ap(predictions, ground_truth, iou_threshold=0.5) -> float",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Sort stably by score, label each prediction TP/FP through greedy unmatched-GT matching,\nform cumulative precision/recall, then integrate the monotonic precision envelope.",
+        "code": "import numpy as np\n\ndef _iou_one_to_many(box, boxes):\n    if len(boxes) == 0:\n        return np.empty(0, dtype=np.float64)\n    b = np.asarray(boxes, dtype=np.float64)\n    a = np.asarray(box, dtype=np.float64)\n    lt = np.maximum(a[:2], b[:, :2])\n    rb = np.minimum(a[2:], b[:, 2:])\n    wh = np.clip(rb - lt, 0.0, None)\n    inter = wh[:, 0] * wh[:, 1]\n    area_a = max(0.0, a[2]-a[0]) * max(0.0, a[3]-a[1])\n    area_b = np.clip(b[:,2]-b[:,0],0,None) * np.clip(b[:,3]-b[:,1],0,None)\n    union = area_a + area_b - inter\n    return np.divide(inter, union, out=np.zeros_like(inter), where=union > 0)\n\ndef detection_ap(predictions, ground_truth, iou_threshold=0.5) -> float:\n    total_gt = sum(len(v) for v in ground_truth.values())\n    if total_gt == 0:\n        return 0.0\n\n    order = sorted(range(len(predictions)), key=lambda i: (-float(predictions[i][\"score\"]), i))\n    matched = {k: np.zeros(len(v), dtype=bool) for k, v in ground_truth.items()}\n    tp, fp = [], []\n\n    for i in order:\n        pred = predictions[i]\n        image_id = pred[\"image_id\"]\n        gt_boxes = ground_truth.get(image_id, [])\n        used = matched.setdefault(image_id, np.zeros(len(gt_boxes), dtype=bool))\n        ious = _iou_one_to_many(pred[\"box\"], gt_boxes)\n        if ious.size:\n            candidates = np.where(~used)[0]\n            if candidates.size:\n                best = candidates[np.argmax(ious[candidates])]\n                if ious[best] >= iou_threshold:\n                    used[best] = True\n                    tp.append(1.0)\n                    fp.append(0.0)\n                    continue\n        tp.append(0.0)\n        fp.append(1.0)\n\n    tp = np.cumsum(tp)\n    fp = np.cumsum(fp)\n    recall = tp / total_gt\n    precision = tp / np.maximum(tp + fp, 1e-12)\n\n    mrec = np.concatenate(([0.0], recall, [1.0]))\n    mpre = np.concatenate(([0.0], precision, [0.0]))\n    for i in range(len(mpre) - 2, -1, -1):\n        mpre[i] = max(mpre[i], mpre[i + 1])\n    idx = np.where(mrec[1:] != mrec[:-1])[0]\n    return float(np.sum((mrec[idx + 1] - mrec[idx]) * mpre[idx + 1]))"
+      },
+      "grader_tests": [
+        "Stable equal-score ordering",
+        "Greedy unmatched GT matching",
+        "Correct interpolated AP integration"
+      ]
+    },
+    {
+      "id": "AICV-28",
+      "title": "Deterministic Weighted Box Fusion",
+      "difficulty": "hard",
+      "category": "Object detection / post-processing",
+      "problem": "Fuse overlapping xyxy boxes with scores using a deterministic greedy clustering algorithm.\nProcess boxes by descending score (ties: smaller index). A box joins the first existing cluster whose\ncurrent fused box has IoU >= threshold; otherwise it starts a new cluster.",
+      "requirements": [
+        "Current fused coordinates are the score-weighted average of member coordinates.",
+        "Fused score is the arithmetic mean of member scores.",
+        "Cluster order is creation order.",
+        "Scores must be non-negative.",
+        "Return (fused_boxes, fused_scores) as NumPy arrays."
+      ],
+      "function_signature": "weighted_box_fusion(boxes, scores, iou_threshold=0.55)",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Maintain cluster members and recompute each cluster's score-weighted fused coordinates after insertion.",
+        "code": "import numpy as np\n\ndef _single_iou(a, b):\n    lt = np.maximum(a[:2], b[:2])\n    rb = np.minimum(a[2:], b[2:])\n    wh = np.clip(rb - lt, 0.0, None)\n    inter = wh[0] * wh[1]\n    aa = max(0.0, a[2]-a[0]) * max(0.0, a[3]-a[1])\n    ab = max(0.0, b[2]-b[0]) * max(0.0, b[3]-b[1])\n    union = aa + ab - inter\n    return 0.0 if union <= 0 else float(inter / union)\n\ndef weighted_box_fusion(boxes, scores, iou_threshold=0.55):\n    boxes = np.asarray(boxes, dtype=np.float64)\n    scores = np.asarray(scores, dtype=np.float64)\n    if boxes.ndim != 2 or boxes.shape[1] != 4 or scores.shape != (len(boxes),):\n        raise ValueError(\"invalid shapes\")\n    if np.any(scores < 0):\n        raise ValueError(\"scores must be non-negative\")\n    order = np.lexsort((np.arange(len(scores)), -scores))\n    clusters = []\n\n    def fused(cluster):\n        idx = np.asarray(cluster, dtype=int)\n        w = scores[idx]\n        if w.sum() == 0:\n            box = boxes[idx].mean(axis=0)\n        else:\n            box = np.average(boxes[idx], axis=0, weights=w)\n        score = float(scores[idx].mean())\n        return box, score\n\n    for idx in order:\n        placed = False\n        for cluster in clusters:\n            fbox, _ = fused(cluster)\n            if _single_iou(boxes[idx], fbox) >= iou_threshold:\n                cluster.append(int(idx))\n                placed = True\n                break\n        if not placed:\n            clusters.append([int(idx)])\n\n    if not clusters:\n        return np.empty((0,4), dtype=np.float64), np.empty((0,), dtype=np.float64)\n    fboxes, fscores = zip(*(fused(c) for c in clusters))\n    return np.stack(fboxes), np.asarray(fscores, dtype=np.float64)"
+      },
+      "grader_tests": [
+        "Deterministic processing order",
+        "Score-weighted coordinates",
+        "Mean fused score"
+      ]
+    },
+    {
+      "id": "AICV-29",
+      "title": "Greedy Centroid Tracker Assignment",
+      "difficulty": "hard",
+      "category": "Tracking / geometry",
+      "problem": "Assign current detection centroids to previous track centroids using globally sorted pair distances.\nPrevious tracks are a dict int track_id -> [x,y]. Unmatched detections start new tracks.",
+      "requirements": [
+        "Build all track-detection Euclidean distances <= max_distance.",
+        "Sort candidate pairs by (distance, track_id, detection_index).",
+        "Greedily accept a pair if both sides are unmatched.",
+        "Drop unmatched previous tracks.",
+        "New IDs start at max(previous_ids)+1, or 0 if no previous tracks.",
+        "Return dict track_id -> np.ndarray([x,y], float64)."
+      ],
+      "function_signature": "update_centroid_tracks(prev_tracks, detections, max_distance: float) -> dict",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Create and sort feasible assignment candidates, greedily match unique pairs,\nthen allocate deterministic IDs to remaining detections in detection order.",
+        "code": "import numpy as np\n\ndef update_centroid_tracks(prev_tracks, detections, max_distance: float) -> dict:\n    if max_distance < 0:\n        raise ValueError(\"max_distance must be non-negative\")\n    det = np.asarray(detections, dtype=np.float64)\n    if det.ndim != 2 or det.shape[1] != 2:\n        raise ValueError(\"detections must have shape (N,2)\")\n    tracks = {int(k): np.asarray(v, dtype=np.float64) for k, v in prev_tracks.items()}\n    if any(v.shape != (2,) for v in tracks.values()):\n        raise ValueError(\"invalid previous centroid\")\n\n    candidates = []\n    for tid, center in tracks.items():\n        for j, d in enumerate(det):\n            distance = float(np.linalg.norm(center - d))\n            if distance <= max_distance:\n                candidates.append((distance, tid, j))\n    candidates.sort(key=lambda x: (x[0], x[1], x[2]))\n\n    used_tracks = set()\n    used_det = set()\n    out = {}\n    for _, tid, j in candidates:\n        if tid not in used_tracks and j not in used_det:\n            out[tid] = det[j].copy()\n            used_tracks.add(tid)\n            used_det.add(j)\n\n    next_id = (max(tracks) + 1) if tracks else 0\n    for j, d in enumerate(det):\n        if j not in used_det:\n            out[next_id] = d.copy()\n            next_id += 1\n    return out"
+      },
+      "grader_tests": [
+        "Global sorted greedy matching",
+        "Drops unmatched old tracks",
+        "Deterministic new IDs"
+      ]
+    },
+    {
+      "id": "AICV-30",
+      "title": "LoRA Linear Layer",
+      "difficulty": "hard",
+      "category": "PyTorch / parameter-efficient fine-tuning",
+      "problem": "Implement a LoRA-augmented linear layer with a frozen base weight and optional frozen base bias.\nFor input x, output = linear(x, W, b) + scaling * linear(linear(x, A), B),\nwhere A has shape [r,in_features], B has shape [out_features,r], and scaling=alpha/r.",
+      "requirements": [
+        "r must be >=1.",
+        "Base weight and base bias must have requires_grad=False.",
+        "Initialize base weight with kaiming_uniform_ and base bias with the same bound as nn.Linear.",
+        "Initialize A with kaiming_uniform_ and B with zeros, so the initial LoRA update is exactly zero.",
+        "Only A and B are trainable.",
+        "Support arbitrary leading input dimensions."
+      ],
+      "function_signature": "LoRALinear(in_features, out_features, r=4, alpha=1.0, bias=True): nn.Module",
+      "public_examples": [],
+      "reference_answer": {
+        "explanation": "Store base parameters separately from A/B, freeze the base tensors, initialize B to zero,\nand use F.linear twice for the low-rank path.",
+        "code": "import math\nimport torch\nfrom torch import nn\nimport torch.nn.functional as F\n\nclass LoRALinear(nn.Module):\n    def __init__(self, in_features, out_features, r=4, alpha=1.0, bias=True):\n        super().__init__()\n        if r < 1:\n            raise ValueError(\"r must be >=1\")\n        self.in_features = int(in_features)\n        self.out_features = int(out_features)\n        self.r = int(r)\n        self.scaling = float(alpha) / self.r\n\n        self.weight = nn.Parameter(torch.empty(out_features, in_features), requires_grad=False)\n        self.bias = (\n            nn.Parameter(torch.empty(out_features), requires_grad=False)\n            if bias else None\n        )\n        self.A = nn.Parameter(torch.empty(r, in_features))\n        self.B = nn.Parameter(torch.zeros(out_features, r))\n        self.reset_parameters()\n\n    def reset_parameters(self):\n        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))\n        nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))\n        nn.init.zeros_(self.B)\n        if self.bias is not None:\n            fan_in = self.in_features\n            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0\n            nn.init.uniform_(self.bias, -bound, bound)\n\n    def forward(self, x):\n        base = F.linear(x, self.weight, self.bias)\n        lora = F.linear(F.linear(x, self.A, bias=None), self.B, bias=None)\n        return base + self.scaling * lora"
+      },
+      "grader_tests": [
+        "Base params frozen",
+        "B initialized to zero",
+        "Correct low-rank path and scaling"
+      ]
+    }
+  ],
+  "comparison_models": [
+    {
+      "model_name": "ChatGPT 5.6 Instant",
+      "mode": "Instant",
+      "parameter_count": "Not provided in the benchmark materials"
+    },
+    {
+      "model_name": "Qwen 3.8 120B",
+      "parameter_count": "120B",
+      "parameter_count_note": "Model description supplied for this benchmark run"
+    }
+  ]
+}
