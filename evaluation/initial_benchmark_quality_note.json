@@ -1,7 +1,0 @@
-{
-  "known_confirmed_issue": {
-    "challenge_id": "AICV-02",
-    "issue": "OpenCV copyMakeBorder scalar constant for a multi-channel image does not imply equal padding in all channels; the original reference behavior was therefore not treated as infallible ground truth."
-  },
-  "note": "This file records confirmed issues found during the prior audit; it is not a claim that all other references are perfect."
-}
