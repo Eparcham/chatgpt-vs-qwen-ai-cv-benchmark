@@ -1,0 +1,148 @@
+{
+  "token_estimation_policy": {
+    "exact_api_tokens_available": false,
+    "proxy": "ceil(total stored answer characters / 4)",
+    "why": "The original runs did not log comparable provider tokenizer usage. A transparent common character-based proxy is used only for relative output-length comparison.",
+    "additional_exact_metrics": [
+      "characters",
+      "whitespace-separated units",
+      "Python lexical tokens in solution code",
+      "solution code lines"
+    ]
+  },
+  "output_length": {
+    "phase1_qwen_to_gpt_estimated_token_ratio": 1.608,
+    "cross_qwen_to_gpt_estimated_token_ratio": 1.94,
+    "phase1_qwen_to_gpt_code_line_ratio": 1.472,
+    "cross_qwen_to_gpt_code_line_ratio": 1.709
+  },
+  "question_authoring": {
+    "qwen_to_chatgpt_public_question_character_ratio": 4.63,
+    "qwen_to_chatgpt_reference_code_line_ratio": 6.485,
+    "warning": "Longer questions/references are associated here with more audited conflicts in the Qwen-authored set, but this benchmark does not establish causation."
+  },
+  "completion": {
+    "phase1_gpt": "30/30",
+    "phase1_qwen": "30/30",
+    "cross_gpt": "15/15",
+    "cross_qwen": "15/15"
+  },
+  "runtime": {
+    "workloads": 14,
+    "gpt_faster_count": 5,
+    "qwen_faster_count": 9,
+    "geometric_mean_qwen_over_gpt_runtime_ratio": 1.031,
+    "median_qwen_over_gpt_runtime_ratio": 0.867,
+    "interpretation": "Runtime workloads have different absolute scales. Ratios/win counts are more meaningful than summing raw milliseconds. This measures generated-code execution, not LLM response latency."
+  },
+  "score_uncertainty": {
+    "phase1_task_score_distribution": {
+      "gpt_5_6_sol": {
+        "n": 30,
+        "mean": 96.7,
+        "median": 98.0,
+        "sd": 3.35,
+        "min": 82.0,
+        "max": 98.0,
+        "tasks_ge_90": 29,
+        "tasks_lt_70": 0
+      },
+      "qwen_3_8_120b": {
+        "n": 30,
+        "mean": 81.13,
+        "median": 86.5,
+        "sd": 15.29,
+        "min": 40.0,
+        "max": 96.0,
+        "tasks_ge_90": 9,
+        "tasks_lt_70": 5
+      }
+    },
+    "phase1_paired_task_mean_gap": {
+      "mean_gap_points": 15.57,
+      "bootstrap_95pct_ci": [
+        10.27,
+        21.5
+      ],
+      "note": "Descriptive bootstrap over the 30 benchmark tasks; not a population-level model confidence interval."
+    },
+    "cross_task_score_distribution": {
+      "gpt_5_6_sol": {
+        "n": 15,
+        "mean": 96.4,
+        "median": 98.0,
+        "sd": 3.18,
+        "min": 88.0,
+        "max": 99.0,
+        "tasks_ge_90": 14,
+        "tasks_lt_70": 0
+      },
+      "qwen_3_8_120b": {
+        "n": 15,
+        "mean": 90.87,
+        "median": 96.0,
+        "sd": 11.72,
+        "min": 55.0,
+        "max": 99.0,
+        "tasks_ge_90": 10,
+        "tasks_lt_70": 1
+      }
+    },
+    "cross_directional_means": {
+      "gpt_5_6_sol_mean": 96.4,
+      "gpt_bootstrap_95pct_ci": [
+        94.73,
+        97.8
+      ],
+      "qwen_mean": 90.87,
+      "qwen_bootstrap_95pct_ci": [
+        84.47,
+        95.67
+      ],
+      "directional_gap": 5.53,
+      "gap_bootstrap_95pct_ci": [
+        0.4,
+        12.07
+      ],
+      "note": "The two Cross-Eval directions use different opponent-authored task sets. The gap is descriptive and is not a same-task causal model effect."
+    },
+    "runtime_microbenchmark": {
+      "workloads": 14,
+      "gpt_faster_count": 5,
+      "qwen_faster_count": 9,
+      "geometric_mean_qwen_over_gpt_runtime_ratio": 1.031,
+      "median_qwen_over_gpt_runtime_ratio": 0.867,
+      "interpretation": "Runtime workloads have different absolute scales. Ratios/win counts are more meaningful than summing raw milliseconds. This measures generated-code execution, not LLM response latency."
+    }
+  },
+  "verbosity_score_correlations": [
+    {
+      "phase": "Phase 1",
+      "system": "GPT-5.6 Sol",
+      "n": 30,
+      "spearman_estimated_tokens_vs_score": -0.249,
+      "spearman_code_lines_vs_score": -0.183
+    },
+    {
+      "phase": "Phase 1",
+      "system": "Qwen 3.8 120B",
+      "n": 30,
+      "spearman_estimated_tokens_vs_score": -0.034,
+      "spearman_code_lines_vs_score": -0.023
+    },
+    {
+      "phase": "Cross-Evaluation",
+      "system": "GPT-5.6 Sol",
+      "n": 15,
+      "spearman_estimated_tokens_vs_score": -0.249,
+      "spearman_code_lines_vs_score": -0.199
+    },
+    {
+      "phase": "Cross-Evaluation",
+      "system": "Qwen 3.8 120B",
+      "n": 15,
+      "spearman_estimated_tokens_vs_score": -0.437,
+      "spearman_code_lines_vs_score": -0.286
+    }
+  ]
+}

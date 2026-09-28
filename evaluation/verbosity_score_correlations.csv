@@ -1,0 +1,5 @@
+﻿phase,system,n,spearman_estimated_tokens_vs_score,spearman_code_lines_vs_score
+Phase 1,GPT-5.6 Sol,30,-0.249,-0.183
+Phase 1,Qwen 3.8 120B,30,-0.034,-0.023
+Cross-Evaluation,GPT-5.6 Sol,15,-0.249,-0.199
+Cross-Evaluation,Qwen 3.8 120B,15,-0.437,-0.286

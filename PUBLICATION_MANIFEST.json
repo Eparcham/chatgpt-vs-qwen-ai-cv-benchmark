@@ -1,0 +1,40 @@
+{
+  "files": {
+    "initial_benchmark/benchmark_30_tasks_with_reference.json": {
+      "sha256": "654abfb877d14917afa9845b04a9179d9144b05438873b6d5e2c52df37080aa8",
+      "bytes": 62687
+    },
+    "chatgpt/authored_cross_eval/questions_only.json": {
+      "sha256": "45453d3ae0e95048de9ec40528db9fe0c18193af644b9e7c52c81d40c0cde543",
+      "bytes": 11700
+    },
+    "qwen/authored_cross_eval/questions_only.json": {
+      "sha256": "a9165337adc536b567f024c92bd86a7318aced64d4cc16c074d321f5dd92b650",
+      "bytes": 34616
+    },
+    "chatgpt/answers/phase1_chatgpt_5_6_sol_answers.json": {
+      "sha256": "0c6167dda4397bb5ef1b46c0405c31c05c223cdf8ca8b920744f532a5d45d744",
+      "bytes": 41028
+    },
+    "qwen/answers/phase1_qwen_3_8_120b_answers.json": {
+      "sha256": "c8e54b0a3d89460d3ade0c4e679676692eb85ac61c2cc6ac57eec9b70d5d148c",
+      "bytes": 63462
+    },
+    "chatgpt/answers/cross_eval_gpt_5_6_sol_answers_on_qwen_questions.json": {
+      "sha256": "b01c2e7eae69726f1dcf7bdc3c250a291c8eec886cd1e002317a030709713706",
+      "bytes": 31817
+    },
+    "qwen/answers/cross_eval_answers_on_chatgpt_authored_questions.json": {
+      "sha256": "847875ad672d63d66fa639f0a5d812850ca9b7b98c63872efa611e57bfead0db",
+      "bytes": 58720
+    },
+    "evaluation/phase1_task_scores.csv": {
+      "sha256": "ac2c8e162093929dc96c02d4f6b78effa3dee39af9a5a72e67945bbfdb2327da",
+      "bytes": 2843
+    },
+    "evaluation/cross_eval_task_scores.csv": {
+      "sha256": "2045357133a3109492656eec568fcb8e1151a726232f31119581fe330b103925",
+      "bytes": 6465
+    }
+  }
+}
